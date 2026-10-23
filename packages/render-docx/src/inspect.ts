@@ -42,10 +42,7 @@ export async function readDocx(data: ArrayBuffer | Uint8Array): Promise<DocxFact
   const xml = await docFile.async("string");
   const styles = (await zip.file("word/styles.xml")?.async("string")) ?? "";
 
-  const defRun = styles.match(/<w:rPrDefault>[\s\S]*?<\/w:rPrDefault>/)?.[0] ?? "";
-  const defFontTag = defRun.match(/<w:rFonts[^>]*>/)?.[0] ?? "";
-  const defFont = attr(defFontTag, "w:cs") ?? attr(defFontTag, "w:ascii");
-  const defSz = Number(attr(defRun.match(/<w:sz [^>]*>/)?.[0] ?? "", "w:val")) || 22;
+  const style = readStyles(styles);
 
   const facts: DocxFacts = { fonts: {}, sizes: {}, images: [], text: [] };
 
@@ -73,9 +70,7 @@ export async function readDocx(data: ArrayBuffer | Uint8Array): Promise<DocxFact
       const t = [...r.matchAll(/<w:t(?:\s[^>]*)?>([\s\S]*?)<\/w:t>|<w:tab\/>/g)].map((m) => (m[1] === undefined ? "\t" : entity(m[1]))).join("");
       line += t;
       if (!t.trim()) continue;
-      const fontTag = r.match(/<w:rFonts[^>]*>/)?.[0] ?? "";
-      const font = attr(fontTag, "w:cs") ?? attr(fontTag, "w:ascii") ?? defFont ?? "(ไม่ระบุ)";
-      const sz = Number(attr(r.match(/<w:sz [^>]*>/)?.[0] ?? "", "w:val")) || defSz;
+      const { font, sz } = style.resolve(p, r);
       bump(facts.fonts, font, t.length);
       bump(facts.sizes, String(sz / 2), t.length);
     }
@@ -86,6 +81,54 @@ export async function readDocx(data: ArrayBuffer | Uint8Array): Promise<DocxFact
     if (clean.trim()) facts.text.push(clean);
   }
   return facts;
+}
+
+interface RunProps { font?: string; sz?: number }
+interface StyleDef extends RunProps { basedOn?: string; isDefault?: boolean }
+
+/** ฟอนต์/ขนาดจาก <w:rPr> — ตัวอักษรไทยใช้ฟอนต์และขนาดชุด complex script (cs) ก่อน */
+function runProps(rPr: string): RunProps {
+  const fonts = rPr.match(/<w:rFonts[^>]*>/)?.[0] ?? "";
+  const font = attr(fonts, "w:cs") ?? attr(fonts, "w:ascii") ?? attr(fonts, "w:hAnsi") ?? (attr(fonts, "w:csTheme") ?? attr(fonts, "w:asciiTheme") ? "ฟอนต์ตามธีมของ Word" : undefined);
+  const szCs = Number(attr(rPr.match(/<w:szCs [^>]*>/)?.[0] ?? "", "w:val"));
+  const sz = Number(attr(rPr.match(/<w:sz [^>]*>/)?.[0] ?? "", "w:val"));
+  return { ...(font ? { font } : {}), ...(szCs || sz ? { sz: szCs || sz } : {}) };
+}
+
+/** อ่าน styles.xml: ค่าตั้งต้นเอกสาร → สไตล์ Normal → สไตล์ย่อหน้า (ตามสาย basedOn) → ตัวอักษรของ run */
+function readStyles(xml: string) {
+  const defaults = runProps(xml.match(/<w:rPrDefault>[\s\S]*?<\/w:rPrDefault>/)?.[0] ?? "");
+  const defs = new Map<string, StyleDef>();
+  let normal: string | undefined;
+  for (const m of xml.matchAll(/<w:style\s[^>]*>[\s\S]*?<\/w:style>/g)) {
+    const block = m[0];
+    const head = block.match(/<w:style\s[^>]*>/)![0];
+    const id = attr(head, "w:styleId");
+    if (!id) continue;
+    const basedOn = attr(block.match(/<w:basedOn [^>]*>/)?.[0] ?? "", "w:val");
+    const isDefault = attr(head, "w:default") === "1" && attr(head, "w:type") === "paragraph";
+    if (isDefault) normal = id;
+    defs.set(id, { ...runProps(block.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)?.[0] ?? ""), ...(basedOn ? { basedOn } : {}), isDefault });
+  }
+  const chain = (id: string | undefined): RunProps => {
+    const seen = new Set<string>();
+    let out: RunProps = {};
+    for (let cur = id; cur && !seen.has(cur) && defs.has(cur); cur = defs.get(cur)!.basedOn) {
+      seen.add(cur);
+      const d = defs.get(cur)!;
+      out = { ...(d.font ? { font: d.font } : {}), ...(d.sz ? { sz: d.sz } : {}), ...out };
+    }
+    return out;
+  };
+  return {
+    resolve(p: string, r: string): { font: string; sz: number } {
+      const pStyle = attr(p.match(/<w:pStyle [^>]*>/)?.[0] ?? "", "w:val");
+      const rStyle = attr(r.match(/<w:rStyle [^>]*>/)?.[0] ?? "", "w:val");
+      const direct = runProps(r.match(/<w:rPr>[\s\S]*?<\/w:rPr>/)?.[0] ?? "");
+      const layers = [direct, chain(rStyle), chain(pStyle ?? normal), chain(normal), defaults];
+      return { font: layers.find((l) => l.font)?.font ?? "(ไม่ระบุ)", sz: layers.find((l) => l.sz)?.sz ?? 20 };
+    },
+  };
 }
 
 const norm = (f: string) => f.replace(/\s+/g, "").toLowerCase();

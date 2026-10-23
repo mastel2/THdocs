@@ -50,3 +50,21 @@ describe("ตรวจไฟล์ .docx", () => {
     await expect(inspectDocx(new TextEncoder().encode("hello"))).rejects.toThrow();
   });
 });
+
+describe("ไฟล์ที่สร้างจาก Microsoft Word จริง (fixtures)", () => {
+  const read = async (n: string) => (await import("node:fs")).readFileSync(new URL(`./fixtures/${n}`, import.meta.url));
+  it("Word: ตั้ง Normal เป็น TH SarabunPSK 16 ขอบ 3/2 → ไม่มีข้อผิดรูปแบบ แต่จับคำภาษาพูด", async () => {
+    const r = await inspectDocx(await read("word-good.docx"), opt);
+    expect(r.facts.fonts).toHaveProperty("TH SarabunPSK");
+    expect(r.facts.sizes).toHaveProperty("16");
+    const ids = r.findings.map((f) => f.rule);
+    expect(ids).not.toContain("DOCX_FONT");
+    expect(ids).not.toContain("DOCX_SIZE");
+    expect(ids).not.toContain("DOCX_MARGIN");
+    expect(ids).toContain("INFORMAL");
+  });
+  it("Word: เอกสารเปล่าค่าเริ่มต้นของ Word → จับขอบ ฟอนต์ ขนาด", async () => {
+    const ids = (await inspectDocx(await read("word-default.docx"), opt)).findings.map((f) => f.rule);
+    expect(ids).toEqual(expect.arrayContaining(["DOCX_MARGIN", "DOCX_FONT", "DOCX_SIZE"]));
+  });
+});
