@@ -1,0 +1,6 @@
+# reverse proxy + HTTPS อัตโนมัติ (Let's Encrypt) — ตั้ง THDOCS_DOMAIN เช่น thdocs.keep-dark.com
+# ไม่เปิด access log (นโยบายความเป็นส่วนตัวระบุว่าเก็บ IP เฉพาะเท่าที่จำเป็น) — ถ้าเปิด ให้ตั้งอายุเก็บให้ตรงกับนโยบาย
+{$THDOCS_DOMAIN:localhost} {
+	encode zstd gzip
+	reverse_proxy web:3000
+}

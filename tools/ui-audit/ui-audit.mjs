@@ -495,12 +495,29 @@ try {
   await check("manifest ติดตั้งแอปได้ — Chrome ไม่พบข้อบกพร่องการติดตั้ง", async () => {
     await go("/");
     let r = await send("Page.getInstallabilityErrors");
-    for (let i = 0; i < 5 && !r.result; i++) { await sleep(500); r = await send("Page.getInstallabilityErrors"); } // เพิ่งโหลดหน้า CDP อาจตอบ error ครั้งแรก
+    for (let i = 0; i < 20 && !r.result; i++) { await sleep(500); r = await send("Page.getInstallabilityErrors"); } // เพิ่งโหลดหน้า CDP อาจตอบ error ครั้งแรก
+    if (!r.result) return `CDP ไม่ตอบ: ${JSON.stringify(r.error)}`;
     return (r.result.installabilityErrors ?? []).length === 0 || JSON.stringify(r.result.installabilityErrors);
   });
   await check("ไอคอนแอปทุกขนาดโหลดได้ (192/512/maskable/apple)", async () => {
     for (const n of ["192", "512", "maskable-192", "maskable-512", "apple-180"]) { const r = await fetch(`${BASE}/icons/${n}`); if (!r.ok) return `${n} → ${r.status}`; }
     return true;
+  });
+  await check("หัวความปลอดภัย: CSP/nosniff/ห้ามฝัง ทุกหน้า ยกเว้น /addin ที่ไม่มี CSP และฝังใน Word ได้", async () => {
+    const h = async (p) => (await fetch(`${BASE}${p}`)).headers;
+    const main = await h("/"), addin = await h("/addin");
+    const ok = main.get("content-security-policy")?.includes("frame-ancestors 'none'") && main.get("x-content-type-options") === "nosniff" && main.get("x-frame-options") === "DENY"
+      && !addin.get("content-security-policy") && !addin.get("x-frame-options") && addin.get("x-content-type-options") === "nosniff";
+    return ok || "หัวไม่ครบ";
+  });
+  await check("หน้านโยบายความเป็นส่วนตัว/ข้อกำหนดเปิดได้ มีป้ายฉบับร่าง และลิงก์จากหน้าหลัก", async () => {
+    await go("/");
+    const links = await ev(`return [...document.querySelectorAll('a')].map((a) => a.getAttribute('href')).filter((h) => h === '/privacy' || h === '/terms').join()`);
+    for (const p of ["/privacy", "/terms"]) {
+      const t = await (await fetch(`${BASE}${p}`)).text();
+      if (!t.includes("ฉบับร่าง")) return `${p} ไม่มีป้ายฉบับร่าง`;
+    }
+    return links === "/privacy,/terms" || `ลิงก์: ${links}`;
   });
   await check("API ทุกตัวตอบ no-store และ /api/config เปิดเฉพาะผู้ให้บริการที่อนุญาต", async () => {
     const r = await fetch(`${BASE}/api/config`);

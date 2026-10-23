@@ -497,6 +497,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
               )}
             </>
           )}
+          <p className="hint legal-links"><a href="/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> · <a href="/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a></p>
         </section>
 
         <section className="main">

@@ -1,6 +1,7 @@
 # THdocs ติดตั้งเอง
 #   docker compose up -d --build                       เว็บอย่างเดียว (ผู้ใช้ใส่ API key ของตนเองในหน้าตั้งค่า AI)
 #   docker compose --profile local-ai up -d --build    เว็บ + Ollama ในเครื่อง (ข้อมูลไม่ออกนอกเครื่อง)
+#   docker compose --profile public up -d --build      เปิดสาธารณะ: เว็บ + Caddy (HTTPS อัตโนมัติ) ตั้ง THDOCS_DOMAIN และ THDOCS_PUBLIC_URL ใน .env
 #   docker compose exec ollama ollama pull qwen3.5:9b  ดึงโมเดล (ครั้งแรก ต้องมีที่ว่าง/หน่วยความจำพอ)
 # แล้วเปิด http://localhost:3000
 services:
@@ -26,6 +27,23 @@ services:
     security_opt: ["no-new-privileges:true"]
     restart: unless-stopped
 
+  proxy:
+    profiles: ["public"]
+    image: caddy:2@sha256:504a44d7d74bd2bc28a66afc4774912fc21223ca8a67734af1c54ab2f999b489
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      THDOCS_DOMAIN: ${THDOCS_DOMAIN:-localhost}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+    depends_on: [web]
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
   ollama:
     profiles: ["local-ai"]
     image: ollama/ollama:latest   # ปักเป็น digest/เวอร์ชันก่อนใช้งานจริง
@@ -36,3 +54,4 @@ services:
 
 volumes:
   ollama:
+  caddy_data:
