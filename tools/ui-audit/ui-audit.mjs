@@ -494,7 +494,8 @@ try {
   sec("11. PWA และ API");
   await check("manifest ติดตั้งแอปได้ — Chrome ไม่พบข้อบกพร่องการติดตั้ง", async () => {
     await go("/");
-    const r = await send("Page.getInstallabilityErrors");
+    let r = await send("Page.getInstallabilityErrors");
+    for (let i = 0; i < 5 && !r.result; i++) { await sleep(500); r = await send("Page.getInstallabilityErrors"); } // เพิ่งโหลดหน้า CDP อาจตอบ error ครั้งแรก
     return (r.result.installabilityErrors ?? []).length === 0 || JSON.stringify(r.result.installabilityErrors);
   });
   await check("ไอคอนแอปทุกขนาดโหลดได้ (192/512/maskable/apple)", async () => {
@@ -584,6 +585,56 @@ try {
   await check("แผงตรวจไฟล์ไม่ล้นจอที่ 390px", async () => {
     await go("/", { width: 390, height: 800 });
     await ev(`T.click('ตรวจไฟล์ Word'); return 1`); await sleep(500);
+    return (await ev(`return T.overflowX()`)) <= 1;
+  });
+
+  // ============================================================== 13. แม่แบบ .dotx และปรับข้อความ
+  sec("13. แม่แบบ .dotx และปรับข้อความที่เขียนเอง");
+  await go("/", { storage: AI_FAKE });
+  await check("ปุ่ม 'ดาวน์โหลดแม่แบบ .dotx' → ได้ไฟล์ .dotx ที่ชนิดเนื้อหาเป็น template", async () => {
+    await ev(`T.click('เริ่มจากฟอร์มเปล่า'); return 1`);
+    await until(`T.step() === 'ตรวจและแก้'`, 3000);
+    rmSync(dlDir, { recursive: true, force: true }); mkdirSync(dlDir, { recursive: true });
+    await ev(`T.click('ดาวน์โหลดแม่แบบ .dotx'); return 1`);
+    let f; const t0 = Date.now();
+    while (Date.now() - t0 < 8000) { f = readdirSync(dlDir).find((x) => x.endsWith(".dotx")); if (f) break; await sleep(200); }
+    if (!f) return "ไม่ได้ไฟล์ .dotx";
+    const z = await (await import("jszip")).default.loadAsync(readFileSync(join(dlDir, f)));
+    const ct = await z.file("[Content_Types].xml").async("string");
+    return ct.includes("wordprocessingml.template.main+xml") || "ชนิดเนื้อหาไม่ใช่ template";
+  });
+  await go("/", { storage: AI_FAKE });
+  await check("แผง 'ปรับข้อความ' เปิดได้ ปุ่มปรับกดไม่ได้เมื่อยังไม่มีข้อความ และนอก Word ไม่มีปุ่มดึงจาก Word", async () => {
+    await ev(`T.click('ปรับข้อความ'); return 1`);
+    await until(`T.btn('ปรับข้อความ') && document.querySelectorAll('textarea').length`, 3000);
+    const r = await ev(`const cards = [...document.querySelectorAll('.side button')].filter((b) => b.textContent.trim() === 'ปรับข้อความ'); return { dis: cards.at(-1).disabled, word: !!T.btnIn('ใช้ข้อความที่เลือกใน Word') }`);
+    return (r.dis && !r.word) || JSON.stringify(r);
+  });
+  await check("พิมพ์ข้อความ → กดปรับ → ได้ผลลัพธ์จาก AI จำลอง (เบราว์เซอร์เรียกตรง ไม่ผ่านเซิร์ฟเวอร์) และมีปุ่มคัดลอก", async () => {
+    await ev(`T.set(document.querySelector('.side textarea'), 'เลยขอบอกว่าอยากจะจัดอบรมให้เด็กๆ ครับ'); return 1`);
+    const apiBefore = await ev(`return performance.getEntriesByType('resource').filter((r) => r.name.includes('/api/rewrite')).length`);
+    await ev(`[...document.querySelectorAll('.side button')].filter((b) => b.textContent.trim() === 'ปรับข้อความ').at(-1).click(); return 1`);
+    await until(`[...document.querySelectorAll('.side textarea')].some((t) => t.value.includes('ขอเรียนว่าจะจัดอบรม'))`, 8000);
+    const apiAfter = await ev(`return performance.getEntriesByType('resource').filter((r) => r.name.includes('/api/rewrite')).length`);
+    return (apiAfter === apiBefore && !!(await ev(`return !!T.btn('คัดลอก')`))) || "เรียกผ่านเซิร์ฟเวอร์หรือไม่มีปุ่มคัดลอก";
+  });
+  await check("ผลลัพธ์แก้ไขเองได้ในช่องผลลัพธ์", async () => {
+    await ev(`const t = [...document.querySelectorAll('.side textarea')].at(-1); T.set(t, t.value + ' (แก้เอง)'); return 1`);
+    await sleep(200);
+    return await ev(`return [...document.querySelectorAll('.side textarea')].at(-1).value.endsWith('(แก้เอง)')`);
+  });
+  await go("/");
+  await check("ยังไม่ตั้งค่า AI → กดปรับ เปิดหน้าตั้งค่า AI (ไม่ส่งข้อความ)", async () => {
+    await ev(`T.click('ปรับข้อความ'); return 1`);
+    await until(`document.querySelector('.side textarea')`, 3000);
+    await ev(`T.set(document.querySelector('.side textarea'), 'ทดสอบ'); return 1`);
+    await ev(`[...document.querySelectorAll('.side button')].filter((b) => b.textContent.trim() === 'ปรับข้อความ').at(-1).click(); return 1`);
+    await until(`document.body.textContent.includes('ตั้งค่า AI')`, 3000);
+    return true;
+  });
+  await check("แผงปรับข้อความไม่ล้นจอที่ 390px", async () => {
+    await go("/", { width: 390, height: 800, storage: AI_FAKE });
+    await ev(`T.click('ปรับข้อความ'); return 1`); await sleep(500);
     return (await ev(`return T.overflowX()`)) <= 1;
   });
 } finally {

@@ -13,6 +13,7 @@ import {
   maskSummary,
   normalizeProfile,
   revise,
+  rewriteText,
   type Context,
   type DraftFile,
   type DraftOptions,
@@ -20,6 +21,8 @@ import {
   type LLM,
   type OrgProfile,
   type PrivacyAudit,
+  type RewriteMode,
+  type Secrecy,
 } from "@thdocs/core";
 import { LLMError, OpenAICompatLLM, isLocalUrl } from "@thdocs/llm/openai-compat";
 import { api } from "./client";
@@ -140,6 +143,22 @@ export async function aiRevise(
   try {
     const file = await revise(browserLLM(a.llm, info, signal, deps), def, a.file, a.instruction, ctx, audit);
     return { file, masked: maskSummary(audit.masked) };
+  } catch (e) {
+    return explain(e, llmUrl(a.llm));
+  }
+}
+
+export async function aiRewrite(
+  a: { text: string; mode: RewriteMode; secrecy?: Secrecy; llm: LLMChoice },
+  signal?: AbortSignal,
+  deps: Deps = {},
+): Promise<{ text: string; masked: string }> {
+  const info = browserProvider(a.llm.provider);
+  if (!info) return api<{ text: string; masked: string }>("/api/rewrite", { text: a.text, mode: a.mode, ...(a.secrecy ? { secrecy: a.secrecy } : {}), llm: a.llm }, signal);
+  const audit: PrivacyAudit = { masked: [] };
+  try {
+    const text = await rewriteText(browserLLM(a.llm, info, signal, deps), a.text, a.mode, a.secrecy, audit);
+    return { text, masked: maskSummary(audit.masked) };
   } catch (e) {
     return explain(e, llmUrl(a.llm));
   }

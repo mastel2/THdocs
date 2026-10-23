@@ -15,19 +15,21 @@ import {
 } from "@thdocs/core";
 import { PAGE_CSS, renderHtml } from "@thdocs/render-html";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { aiDraft, aiFacts, aiRevise, isExternal } from "../lib/ai";
+import { aiDraft, aiFacts, aiRevise, aiRewrite, isExternal } from "../lib/ai";
 import { api, download, load, save } from "../lib/client";
-import { blobToBase64, insertDocx, officeReady, readOpenDocument, selectedText } from "../lib/office";
+import { blobToBase64, insertDocx, officeReady, readOpenDocument, replaceSelection, selectedText } from "../lib/office";
 import { useInstall, useServiceWorker } from "./PwaRegister";
 import { BROWSER_PROVIDERS, PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
+import { toDotx } from "@thdocs/render-docx/template";
 import { CheckDocx } from "./CheckDocx";
 import { Findings } from "./Findings";
 import { Preview } from "./Preview";
+import { RewriteText } from "./RewriteText";
 import { SchemaForm } from "./SchemaForm";
 import { LLMSettings, ProfileSettings } from "./Settings";
 
 type Step = "request" | "facts" | "edit";
-type Panel = "profile" | "llm" | "check" | null;
+type Panel = "profile" | "llm" | "check" | "rewrite" | null;
 
 const EMPTY_PROFILE: OrgProfile = { orgName: "", unit: "", address: [] };
 /** เครื่องที่ไม่มี TH Sarabun ใช้ Sarabun (Google Fonts) — render-html ปรับขนาดตาให้เท่ากันด้วย font-size-adjust */
@@ -218,6 +220,16 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
     if (blob) download(blob, `${findType(file.type)!.name}.docx`);
   }
 
+  /** แม่แบบ Word (.dotx): เปิดใน Word เป็นเอกสารใหม่ที่มีขอบ ฟอนต์ หัวกระดาษตามแบบ แล้วพิมพ์ต่อเอง */
+  async function getDotx() {
+    if (!file) return;
+    const blob = await run("กำลังสร้างแม่แบบ", async (signal) => {
+      const docx = await api<Blob>("/api/docx", { file, profile, ...(emblem ? { emblem } : {}) }, signal);
+      return new Blob([new Uint8Array(await toDotx(await docx.arrayBuffer()))], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.template" });
+    });
+    if (blob) download(blob, `${findType(file.type)!.name} (แม่แบบ).dotx`);
+  }
+
   async function insertIntoWord(where: "replace" | "cursor") {
     if (!file) return;
     setNotice(null);
@@ -275,6 +287,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
         <div className="brand">THdocs {!addin && <span>ร่างหนังสือราชการด้วย AI</span>}</div>
         <nav>
           {install && !addin && <button className="tab install" onClick={install}>ติดตั้งแอป</button>}
+          <button className={panel === "rewrite" ? "tab on" : "tab"} onClick={() => setPanel(panel === "rewrite" ? null : "rewrite")}>ปรับข้อความ</button>
           <button className={panel === "check" ? "tab on" : "tab"} onClick={() => setPanel(panel === "check" ? null : "check")}>ตรวจไฟล์ Word</button>
           <button className={panel === "profile" ? "tab on" : "tab"} onClick={() => setPanel(panel === "profile" ? null : "profile")}>ข้อมูลหน่วยงาน</button>
           <button className={panel === "llm" ? "tab on" : "tab"} onClick={() => setPanel(panel === "llm" ? null : "llm")}>
@@ -298,6 +311,19 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
               <LLMSettings providers={allProviders} choice={llm} onChange={setLlm} remember={remember} onRemember={setRemember} />
               <button className="primary" onClick={() => setPanel(null)}>เสร็จ</button>
             </div>
+          )}
+
+          {panel === "rewrite" && (
+            <>
+              <RewriteText
+                needsSetup={needsSetup}
+                onSetup={() => setPanel("llm")}
+                externalName={provider?.external ? provider.name : undefined}
+                rewrite={(a, signal) => aiRewrite({ ...a, llm }, signal)}
+                {...(inWord ? { word: { read: selectedText, replace: replaceSelection } } : {})}
+              />
+              <button className="primary" onClick={() => setPanel(null)}>กลับไปร่างเอกสาร</button>
+            </>
           )}
 
           {panel === "check" && (
@@ -475,6 +501,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
           {file && !addin && (
             <div className="toolbar">
               <button className="primary" disabled={!!busy || !view?.html} onClick={getDocx}>ดาวน์โหลด .docx</button>
+              <button className="ghost" disabled={!!busy || !view?.html} onClick={getDotx}>ดาวน์โหลดแม่แบบ .dotx</button>
               <button className="ghost" disabled={!view?.html} onClick={() => window.print()}>พิมพ์ / PDF</button>
               <button className="ghost" onClick={saveDraft}>บันทึกร่าง</button>
               <button className="ghost" onClick={reset}>เริ่มใหม่</button>

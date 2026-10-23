@@ -25,7 +25,7 @@ createServer((req, res) => {
       const user = j.messages.map((m) => m.content).join("\n");
       if (user.includes("ช้า")) await new Promise((r) => setTimeout(r, 4000));
       const name = j.response_format?.json_schema?.name;
-      const content = name === "facts" ? facts : memo(user.includes("คำสั่งแก้ไข") ? "เรื่องที่แก้แล้วโดย AI" : "ขออนุมัติจัดอบรมการใช้ระบบสารบรรณอิเล็กทรอนิกส์");
+      const content = name === "rewrite" ? { text: "ขอเรียนว่าจะจัดอบรมให้แก่บุคลากร" } : name === "facts" ? facts : memo(user.includes("คำสั่งแก้ไข") ? "เรื่องที่แก้แล้วโดย AI" : "ขออนุมัติจัดอบรมการใช้ระบบสารบรรณอิเล็กทรอนิกส์");
       return void res.writeHead(200, { ...cors, "Content-Type": "application/json" }).end(JSON.stringify({ choices: [{ message: { content: JSON.stringify(content) } }] }));
     }
     res.writeHead(404, cors).end();

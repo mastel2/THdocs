@@ -68,3 +68,16 @@ describe("ไฟล์ที่สร้างจาก Microsoft Word จริ
     expect(ids).toEqual(expect.arrayContaining(["DOCX_MARGIN", "DOCX_FONT", "DOCX_SIZE"]));
   });
 });
+
+describe("แม่แบบ .dotx", () => {
+  it("เปลี่ยนเฉพาะชนิดเนื้อหาเป็น template และยังตรวจได้เหมือนเดิม", async () => {
+    const { toDotx } = await import("../packages/render-docx/src");
+    const docx = await make("memo");
+    const dotx = await toDotx(docx);
+    const ct = await (await JSZip.loadAsync(dotx)).file("[Content_Types].xml")!.async("string");
+    expect(ct).toContain("wordprocessingml.template.main+xml");
+    expect(ct).not.toContain("wordprocessingml.document.main+xml");
+    expect(await rules(dotx)).toEqual(await rules(docx));
+    await expect(toDotx(dotx)).rejects.toThrow(); // ไม่ใช่ .docx แล้ว
+  });
+});

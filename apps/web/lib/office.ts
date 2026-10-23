@@ -141,3 +141,12 @@ export function readOpenDocument(): Promise<Uint8Array> {
     });
   });
 }
+
+/** แทนข้อความที่เลือกด้วยข้อความธรรมดา (จัดรูปแบบตัวอักษรของจุดนั้นตามเดิม) */
+export async function replaceSelection(text: string): Promise<void> {
+  return word().run(async (ctx) => {
+    const sel = ctx.document.getSelection() as unknown as { insertText(t: string, loc: "Replace"): unknown };
+    sel.insertText(text, "Replace");
+    await ctx.sync();
+  });
+}
