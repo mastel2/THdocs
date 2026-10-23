@@ -4,5 +4,5 @@
   "private": true,
   "type": "module",
   "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@thdocs/core": "0.0.1", "@thdocs/llm": "0.0.1", "@thdocs/render-docx": "0.0.1", "@thdocs/templates-thgov": "0.0.1" }
+  "dependencies": { "@thdocs/core": "0.0.1", "@thdocs/llm": "0.0.1", "@thdocs/render-docx": "0.0.1", "@thdocs/templates-iso": "0.0.1", "@thdocs/templates-thgov": "0.0.1" }
 }

@@ -141,7 +141,8 @@ label.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 
 .preview.is-example { position: relative; flex-direction: column; align-items: center; gap: 10px; }
 .example-badge {
-  position: sticky; top: 64px; z-index: 2; align-self: center;
+  /* อยู่เหนือหน้ากระดาษ ไม่ลอยทับ — หัวกระดาษ ISO อยู่บนสุดของหน้าจะถูกบัง */
+  align-self: center; text-align: center;
   background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600;
   padding: 4px 14px; border-radius: 999px; box-shadow: var(--shadow);
 }

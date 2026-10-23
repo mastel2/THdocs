@@ -13,6 +13,7 @@
     "@thdocs/llm": "0.0.1",
     "@thdocs/render-docx": "0.0.1",
     "@thdocs/render-html": "0.0.1",
+    "@thdocs/templates-iso": "0.0.1",
     "@thdocs/templates-thgov": "0.0.1",
     "next": "16.4.2",
     "react": "19.3.0",

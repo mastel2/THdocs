@@ -2,7 +2,7 @@
  * Document IR → HTML สำหรับพรีวิวและพิมพ์เป็น PDF จากเบราว์เซอร์
  * ใช้หน่วย cm/pt ตรงกับ .docx; การแบ่งหน้าจริงให้ดูจากไฟล์ .docx
  */
-import { PLACEHOLDER_RE, keepNumberUnits, toThaiDigits, type Align, type Block, type DocIR, type Para, type Run } from "@thdocs/core";
+import { PLACEHOLDER_RE, keepNumberUnits, toArabicDigits, toThaiDigits, type Align, type Block, type DocIR, type Para, type Run, type Table } from "@thdocs/core";
 
 export interface HtmlOptions {
   /** data URL ของตรา — ไม่มี = กรอบแทนตรา */
@@ -34,6 +34,9 @@ export const PAGE_CSS = `
 .thd-float{position:absolute;left:0}
 .thd-mark-top,.thd-mark-bottom{position:absolute;left:0;right:0;text-align:center}
 .thd-mark-left{position:absolute;left:0}
+.thd-table{border-collapse:collapse;table-layout:fixed}
+.thd-table td{border:1px solid #000;padding:1pt 4pt}
+.thd-header{margin-bottom:6pt}
 @media print{
   @page{size:A4;margin:0}
   body *{visibility:hidden}
@@ -45,10 +48,12 @@ class Html {
   constructor(private readonly ir: DocIR, private readonly opts: HtmlOptions) {}
 
   private text(t: string) {
-    return keepNumberUnits(this.ir.page.thaiDigits ? toThaiDigits(t) : t);
+    // ตัวเลขตามค่าของเอกสารทั้งสองทาง — วันที่จาก thaiDate() เป็นเลขไทยเสมอ
+    return keepNumberUnits(this.ir.page.thaiDigits ? toThaiDigits(t) : toArabicDigits(t));
   }
 
   private run(r: Run): string {
+    if (r.field) return "1"; // พรีวิวแสดงหน้าเดียว — เลขหน้าจริงอยู่ในไฟล์ .docx
     const style = [
       r.bold ? "font-weight:bold" : "",
       r.sizePt ? `font-size:${r.sizePt}pt` : "",
@@ -103,6 +108,23 @@ class Html {
       : `<span class="${cls} thd-emblem-box" style="height:${heightCm}cm;width:${heightCm * 0.9}cm;display:block"></span>`;
   }
 
+  private table(t: Table): string {
+    const cols = t.columnsCm.map((w) => `<col style="width:${w}cm">`).join("");
+    const rows = t.rows
+      .map((r) => {
+        const cells = r.cells
+          .map((c) => {
+            const style = [c.shade ? `background:#${c.shade}` : "", `vertical-align:${c.vAlign === "top" ? "top" : "middle"}`].filter(Boolean).join(";");
+            return `<td${(c.span ?? 1) > 1 ? ` colspan="${c.span}"` : ""} style="${style}">${c.paras.map((p) => this.para(p)).join("")}</td>`;
+          })
+          .join("");
+        return `<tr>${cells}</tr>`;
+      })
+      .join("");
+    const width = t.columnsCm.reduce((a, b) => a + b, 0);
+    return `<table class="thd-table" style="width:${width}cm${t.spaceBeforePt ? `;margin-top:${t.spaceBeforePt}pt` : ""}"><colgroup>${cols}</colgroup>${rows}</table>`;
+  }
+
   private blocks(blocks: Block[]): string {
     let pending = "";
     const out: string[] = [];
@@ -114,6 +136,8 @@ class Html {
         out.push("<p>&nbsp;</p>".repeat(b.lines));
       } else if (b.kind === "rule") {
         out.push(`<div style="width:${b.widthCm}cm;margin:${b.spaceBeforePt ?? 0}pt auto ${b.spaceAfterPt ?? 6}pt;border-bottom:1px solid #000"></div>`);
+      } else if (b.kind === "table") {
+        out.push(this.table(b));
       } else {
         out.push(this.para(b, pending));
         pending = "";
@@ -128,7 +152,8 @@ class Html {
     const style = [
       `width:${page.widthCm}cm`,
       `min-height:${page.heightCm}cm`,
-      `padding:${page.marginTopCm}cm ${page.marginRightCm}cm ${page.marginBottomCm}cm ${page.marginLeftCm}cm`,
+      // มีหัวกระดาษกำหนดเอง: แสดงหัวที่ระยะหัวกระดาษ (0.8 ซม.) แล้วต่อด้วยเนื้อหา
+      `padding:${this.ir.header ? 0.8 : page.marginTopCm}cm ${page.marginRightCm}cm ${page.marginBottomCm}cm ${page.marginLeftCm}cm`,
       `font-family:${fonts}`,
       `font-size:${page.sizePt}pt`,
     ].join(";");
@@ -139,6 +164,7 @@ class Html {
       mark(marking?.everyPage, "thd-mark-top", "top:0.3cm"),
       mark(marking?.firstPageLeft, "thd-mark-left", `top:0.2cm;left:${page.marginLeftCm}cm`),
       mark(marking?.everyPage, "thd-mark-bottom", "bottom:0.3cm"),
+      this.ir.header ? `<div class="thd-header">${this.blocks(this.ir.header)}</div>` : "",
       this.blocks(this.ir.blocks),
       "</div>",
     ].join("\n");

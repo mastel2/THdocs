@@ -305,7 +305,11 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
                   <label>
                     ชนิดเอกสาร
                     <select value={typeId} onChange={(e) => setTypeId(e.target.value)}>
-                      {TYPES.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                      {PACKS.map((p) => (
+                        <optgroup key={p.id} label={p.name}>
+                          {p.types.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
+                        </optgroup>
+                      ))}
                     </select>
                     <span className="hint">{def.description}</span>
                   </label>

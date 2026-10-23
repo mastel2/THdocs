@@ -1,7 +1,8 @@
 import type { DocTypeDef, TemplatePack } from "@thdocs/core";
+import { isoPack } from "@thdocs/templates-iso";
 import { thGovPack } from "@thdocs/templates-thgov";
 
-export const PACKS: TemplatePack[] = [thGovPack];
+export const PACKS: TemplatePack[] = [thGovPack, isoPack];
 export const TYPES: DocTypeDef<any, any>[] = PACKS.flatMap((p) => p.types);
 export const findType = (id: string) => TYPES.find((t) => t.id === id);
 

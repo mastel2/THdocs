@@ -33,9 +33,10 @@ import {
 } from "@thdocs/core";
 import { LLMError, PROVIDERS, createLLM } from "@thdocs/llm";
 import { renderDocx } from "@thdocs/render-docx";
+import { isoPack } from "@thdocs/templates-iso";
 import { thGovPack } from "@thdocs/templates-thgov";
 
-const PACKS = [thGovPack];
+const PACKS = [thGovPack, isoPack];
 const TYPES = PACKS.flatMap((p) => p.types);
 const SPEEDS = ["ด่วนที่สุด", "ด่วนมาก", "ด่วน"];
 const SECRECY = ["ลับที่สุด", "ลับมาก", "ลับ"];

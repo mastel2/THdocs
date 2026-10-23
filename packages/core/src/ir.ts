@@ -15,6 +15,8 @@ export interface Run {
   color?: string; // hex ไม่มี # เช่น "C00000"
   /** แทรก tab ก่อนข้อความนี้ */
   tabBefore?: boolean;
+  /** ฟิลด์ที่โปรแกรมคำนวณเอง (ใช้ต่อท้ายข้อความ เช่น "หน้า " + page + " / " + pages) */
+  field?: "page" | "pages";
 }
 
 export interface TabStop {
@@ -57,7 +59,24 @@ export interface Separator {
   spaceAfterPt?: number;
 }
 
-export type Block = Para | Emblem | Blank | Separator;
+export interface Cell {
+  paras: Para[];
+  /** รวมกี่คอลัมน์ */
+  span?: number;
+  /** สีพื้น hex ไม่มี # */
+  shade?: string;
+  vAlign?: "top" | "center";
+}
+
+/** ตาราง เส้นขอบทุกช่อง — ใช้กับเอกสารระบบคุณภาพ (ตารางควบคุมเอกสาร ขั้นตอน แบบฟอร์ม) */
+export interface Table {
+  kind: "table";
+  columnsCm: number[];
+  rows: { cells: Cell[]; header?: boolean }[];
+  spaceBeforePt?: number;
+}
+
+export type Block = Para | Emblem | Blank | Separator | Table;
 
 export interface PageSetup {
   widthCm: number;
@@ -86,6 +105,8 @@ export interface DocIR {
   title: string;
   page: PageSetup;
   marking?: Marking;
+  /** หัวกระดาษที่ซ้ำทุกหน้า เช่น ตารางควบคุมเอกสาร (ใช้แทนเลขหน้าแบบหนังสือราชการ) */
+  header?: Block[];
   blocks: Block[];
 }
 
@@ -96,3 +117,13 @@ export const para = (runs: Run[] | string, opts: Omit<Para, "kind" | "runs"> = {
 });
 
 export const blank = (lines = 1, keepWithNext = false): Blank => ({ kind: "blank", lines, keepWithNext });
+
+/** ช่องตารางจากข้อความ (ขึ้นบรรทัดใหม่ = ย่อหน้าใหม่) */
+export const cell = (text: string | Run[], opts: Omit<Cell, "paras"> & { bold?: boolean; align?: Align } = {}): Cell => {
+  const { bold, align, ...rest } = opts;
+  const paras =
+    typeof text === "string"
+      ? text.split("\n").map((t) => para([{ text: t, ...(bold ? { bold } : {}) }], align ? { align } : {}))
+      : [para(text, align ? { align } : {})];
+  return { paras, ...rest };
+};

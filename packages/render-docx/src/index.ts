@@ -12,13 +12,19 @@ import {
   Packer,
   PageNumber,
   Paragraph,
+  ShadingType,
   Tab,
+  Table,
+  TableCell,
+  TableRow,
   TabStopType,
   TextRun,
   TextWrappingType,
+  VerticalAlignTable,
   VerticalPositionRelativeFrom,
+  WidthType,
 } from "docx";
-import { PLACEHOLDER_RE, keepNumberUnits, thaiWordBreaks, toThaiDigits, type Align, type Block, type DocIR, type Emblem, type Para, type Run } from "@thdocs/core";
+import { PLACEHOLDER_RE, keepNumberUnits, toArabicDigits, thaiWordBreaks, toThaiDigits, type Align, type Block, type DocIR, type Emblem, type Para, type Run, type Table as TableBlock } from "@thdocs/core";
 import { placeholderPng, pngSize } from "./png";
 
 export interface RenderOptions {
@@ -71,7 +77,8 @@ class Renderer {
   }
 
   private text(t: string) {
-    return keepNumberUnits(this.ir.page.thaiDigits ? toThaiDigits(t) : t);
+    // ตัวเลขตามค่าของเอกสารทั้งสองทาง — วันที่จาก thaiDate() เป็นเลขไทยเสมอ
+    return keepNumberUnits(this.ir.page.thaiDigits ? toThaiDigits(t) : toArabicDigits(t));
   }
 
   private runs(run: Run): TextRun[] {
@@ -83,6 +90,7 @@ class Renderer {
       ...(run.sizePt ? { size: run.sizePt * 2, sizeComplexScript: run.sizePt * 2 } : {}),
       ...(run.color ? { color: run.color } : {}),
     };
+    if (run.field) return [new TextRun({ ...base, children: [run.field === "page" ? PageNumber.CURRENT : PageNumber.TOTAL_PAGES] })];
     const highlight = this.opts.highlightPlaceholders ?? true;
     const breaks = this.opts.thaiWordBreaks ?? true;
     // แยกช่อง [ระบุ...] ออกเป็น run ของตัวเองเพื่อไฮไลต์ (split ด้วยกลุ่มจับ → ส่วนคี่คือช่อง [ระบุ])
@@ -128,8 +136,38 @@ class Renderer {
     });
   }
 
-  private body(blocks: Block[]): Paragraph[] {
-    const out: Paragraph[] = [];
+  private table(t: TableBlock): Table {
+    const widths = t.columnsCm.map(tw);
+    const line = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
+    return new Table({
+      width: { size: widths.reduce((a, b) => a + b, 0), type: WidthType.DXA },
+      columnWidths: widths,
+      borders: { top: line, bottom: line, left: line, right: line, insideHorizontal: line, insideVertical: line },
+      rows: t.rows.map((r) => {
+        let col = 0;
+        return new TableRow({
+          tableHeader: r.header ?? false,
+          cantSplit: true,
+          children: r.cells.map((c) => {
+            const span = c.span ?? 1;
+            const width = widths.slice(col, col + span).reduce((a, b) => a + b, 0);
+            col += span;
+            return new TableCell({
+              width: { size: width, type: WidthType.DXA },
+              ...(span > 1 ? { columnSpan: span } : {}),
+              ...(c.shade ? { shading: { fill: c.shade, type: ShadingType.CLEAR, color: "auto" } } : {}),
+              verticalAlign: c.vAlign === "top" ? VerticalAlignTable.TOP : VerticalAlignTable.CENTER,
+              margins: { top: 30, bottom: 30, left: 90, right: 90 },
+              children: c.paras.length ? c.paras.map((p) => this.paragraph(p)) : [new Paragraph({ children: [] })],
+            });
+          }),
+        });
+      }),
+    });
+  }
+
+  private body(blocks: Block[]): (Paragraph | Table)[] {
+    const out: (Paragraph | Table)[] = [];
     let pendingFloat: ImageRun[] = [];
     for (const b of blocks) {
       if (b.kind === "emblem") {
@@ -137,6 +175,9 @@ class Renderer {
         else pendingFloat = [this.image(b)]; // ยึดกับย่อหน้าถัดไป
       } else if (b.kind === "blank") {
         for (let i = 0; i < b.lines; i++) out.push(new Paragraph({ keepNext: b.keepWithNext ?? false, children: [] }));
+      } else if (b.kind === "table") {
+        if (b.spaceBeforePt) out.push(new Paragraph({ spacing: { before: 0, after: 0, line: b.spaceBeforePt * 20, lineRule: "exact" }, children: [] }));
+        out.push(this.table(b));
       } else if (b.kind === "rule") {
         // เส้นคั่น = ขอบล่างของย่อหน้าว่างที่บีบความกว้างด้วยเยื้องซ้ายขวาเท่ากัน
         const side = tw(Math.max(0, (this.textWidthCm() - b.widthCm) / 2));
@@ -159,7 +200,12 @@ class Renderer {
   }
 
   private headersFooters() {
-    const { marking, page } = this.ir;
+    const { marking, page, header } = this.ir;
+    if (header) {
+      // หัวกระดาษเดียวกันทุกหน้า (เช่น ตารางควบคุมเอกสาร ISO) — มีย่อหน้าว่างเล็กคั่นจากเนื้อหา
+      const blocks = [...this.body(header), new Paragraph({ spacing: { after: 120 }, children: [] })];
+      return { headers: { default: new Header({ children: blocks }) } };
+    }
     if (!marking && !page.pageNumbers) return {};
     const pageNo = page.pageNumbers
       ? [new Paragraph({
@@ -195,7 +241,7 @@ class Renderer {
       sections: [
         {
           properties: {
-            titlePage: true,
+            titlePage: !this.ir.header, // หนังสือราชการ: หน้าแรกไม่มีเลขหน้า | มีหัวกระดาษกำหนดเอง: เหมือนกันทุกหน้า
             page: {
               size: { width: tw(page.widthCm), height: tw(page.heightCm) },
               margin: {
