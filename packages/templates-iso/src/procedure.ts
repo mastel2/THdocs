@@ -7,8 +7,8 @@ export const ProcedureWording = z.object({
   title: z.string().describe("ชื่อเอกสาร เช่น 'การควบคุมเอกสารและบันทึก'"),
   purpose: z.array(z.string()).describe("วัตถุประสงค์ของขั้นตอนนี้"),
   scope: z.array(z.string()).describe("ขอบเขต: ใช้กับงาน/หน่วยงานใด เริ่มและสิ้นสุดที่ใด"),
-  definitions: z.array(z.object({ term: z.string(), meaning: z.string() })).describe("คำนิยามที่ใช้ในเอกสาร (ไม่มีให้เป็น [])"),
-  responsibilities: z.array(z.object({ role: z.string(), duty: z.string() })).describe("ตำแหน่งและหน้าที่ความรับผิดชอบ"),
+  definitions: z.array(z.object({ term: z.string().describe("คำ"), meaning: z.string().describe("ความหมาย") })).describe("คำนิยามที่ใช้ในเอกสาร (ไม่มีให้เป็น [])"),
+  responsibilities: z.array(z.object({ role: z.string().describe("ตำแหน่ง"), duty: z.string().describe("หน้าที่ความรับผิดชอบ") })).describe("ตำแหน่งและหน้าที่ความรับผิดชอบ"),
   steps: z
     .array(z.object({ step: z.string().describe("ขั้นตอนและรายละเอียด"), responsible: z.string().describe("ตำแหน่งผู้รับผิดชอบ"), record: z.string().describe("เอกสาร/บันทึกที่เกิดขึ้น ('-' ถ้าไม่มี)") }))
     .describe("ขั้นตอนการปฏิบัติงานตามลำดับ"),

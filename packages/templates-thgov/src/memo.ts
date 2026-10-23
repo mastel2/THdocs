@@ -25,7 +25,7 @@ export type MemoWording = z.infer<typeof MemoWording>;
 export const MemoProposalWording = z.object({
   ...head,
   sections: z
-    .array(z.object({ heading: z.string().describe("ชื่อหัวข้อ ไม่ต้องใส่เลขลำดับ"), paragraphs: z.array(z.string()) }))
+    .array(z.object({ heading: z.string().describe("ชื่อหัวข้อ ไม่ต้องใส่เลขลำดับ"), paragraphs: z.array(z.string()).describe("ย่อหน้าในหัวข้อนี้") }))
     .describe("หัวข้อตามลำดับ: เรื่องเดิม, ข้อเท็จจริง, ข้อกฎหมาย/ระเบียบ (ถ้ามี), ข้อพิจารณา, ข้อเสนอ"),
   conclusion: z.string().describe("ภาคสรุป เช่น 'จึงเรียนมาเพื่อโปรดพิจารณา หากเห็นชอบโปรดอนุมัติตามข้อ ...'"),
 });
