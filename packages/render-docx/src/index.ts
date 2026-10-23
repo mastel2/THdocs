@@ -137,7 +137,10 @@ class Renderer {
   }
 
   private table(t: TableBlock): Table {
-    const widths = t.columnsCm.map(tw);
+    // ผู้ใช้ปรับระยะขอบให้แคบลงได้ — ย่อตารางตามสัดส่วนให้ไม่ล้นขอบ
+    const total = t.columnsCm.reduce((a, b) => a + b, 0);
+    const scale = Math.min(1, this.textWidthCm() / total);
+    const widths = t.columnsCm.map((w) => tw(w * scale));
     const line = { style: BorderStyle.SINGLE, size: 4, color: "000000" };
     return new Table({
       width: { size: widths.reduce((a, b) => a + b, 0), type: WidthType.DXA },
@@ -253,8 +256,8 @@ class Renderer {
                 bottom: tw(page.marginBottomCm),
                 left: tw(page.marginLeftCm),
                 right: tw(page.marginRightCm),
-                header: tw(0.8),
-                footer: tw(0.8),
+                header: tw(page.headerCm),
+                footer: tw(page.headerCm),
               },
               ...(page.thaiDigits ? { pageNumbers: { start: 1, formatType: NumberFormat.THAI_NUMBERS } } : {}),
             },

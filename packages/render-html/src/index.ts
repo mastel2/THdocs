@@ -9,6 +9,8 @@ export interface HtmlOptions {
   emblemSrc?: string;
   /** ชื่อฟอนต์สำรองเมื่อเครื่องไม่มีฟอนต์ของเอกสาร */
   fallbackFonts?: string;
+  /** แสดงเส้นประระยะขอบพร้อมตัวเลข ซม. (ไม่พิมพ์ออก) */
+  showMargins?: boolean;
 }
 
 const esc = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
@@ -37,10 +39,14 @@ export const PAGE_CSS = `
 .thd-table{border-collapse:collapse;table-layout:fixed}
 .thd-table td{border:1px solid #000;padding:1pt 4pt}
 .thd-header{margin-bottom:6pt}
+.thd-guide{position:absolute;border:1px dashed #2f6fe0;pointer-events:none;z-index:1}
+.thd-guide-line{position:absolute;left:0;right:0;border-top:1px dotted #2f6fe0;pointer-events:none}
+.thd-guide-tag{position:absolute;font:600 9pt system-ui,sans-serif;color:#2f6fe0;background:#eef3ff;padding:0 4px;border-radius:3px;white-space:nowrap;font-size-adjust:none;pointer-events:none}
 @media print{
   @page{size:A4;margin:0}
   body *{visibility:hidden}
   .thd-page,.thd-page *{visibility:visible}
+  .thd-guide,.thd-guide-line,.thd-guide-tag{display:none}
   .thd-page{position:absolute;left:0;top:0;box-shadow:none!important}
 }`;
 
@@ -109,6 +115,10 @@ class Html {
   }
 
   private table(t: Table): string {
+    // ย่อตามสัดส่วนเมื่อระยะขอบทำให้พื้นที่ข้อความแคบกว่าตาราง (ให้ตรงกับ .docx)
+    const p = this.ir.page;
+    const scale = Math.min(1, (p.widthCm - p.marginLeftCm - p.marginRightCm) / t.columnsCm.reduce((a, b) => a + b, 0));
+    t = { ...t, columnsCm: t.columnsCm.map((w) => w * scale) };
     const cols = t.columnsCm.map((w) => `<col style="width:${w}cm">`).join("");
     const rows = t.rows
       .map((r) => {
@@ -123,6 +133,22 @@ class Html {
       .join("");
     const width = t.columnsCm.reduce((a, b) => a + b, 0);
     return `<table class="thd-table" style="width:${width}cm${t.spaceBeforePt ? `;margin-top:${t.spaceBeforePt}pt` : ""}"><colgroup>${cols}</colgroup>${rows}</table>`;
+  }
+
+  /** กรอบพื้นที่ข้อความ (เส้นประ) + ป้ายตัวเลขระยะขอบแต่ละด้าน + เส้นหัวกระดาษ */
+  private guides(): string {
+    const p = this.ir.page;
+    const n = (v: number) => this.text(String(Math.round(v * 100) / 100));
+    const tag = (pos: string, label: string) => `<span class="thd-guide-tag" style="${pos}">${label}</span>`;
+    return [
+      `<div class="thd-guide" style="top:${p.marginTopCm}cm;bottom:${p.marginBottomCm}cm;left:${p.marginLeftCm}cm;right:${p.marginRightCm}cm"></div>`,
+      `<div class="thd-guide-line" style="top:${p.headerCm}cm"></div>`,
+      tag(`top:${p.marginTopCm / 2}cm;left:50%;transform:translate(-50%,-50%)`, `บน ${n(p.marginTopCm)} ซม.`),
+      tag(`bottom:${p.marginBottomCm / 2}cm;left:50%;transform:translate(-50%,50%)`, `ล่าง ${n(p.marginBottomCm)} ซม.`),
+      tag(`top:50%;left:${p.marginLeftCm / 2}cm;transform:translate(-50%,-50%) rotate(-90deg)`, `ซ้าย ${n(p.marginLeftCm)} ซม.`),
+      tag(`top:50%;right:${p.marginRightCm / 2}cm;transform:translate(50%,-50%) rotate(90deg)`, `ขวา ${n(p.marginRightCm)} ซม.`),
+      tag(`top:${p.headerCm}cm;right:0.2cm;transform:translateY(-110%)`, `หัวกระดาษ ${n(p.headerCm)} ซม.`),
+    ].join("");
   }
 
   private blocks(blocks: Block[]): string {
@@ -153,7 +179,7 @@ class Html {
       `width:${page.widthCm}cm`,
       `min-height:${page.heightCm}cm`,
       // มีหัวกระดาษกำหนดเอง: แสดงหัวที่ระยะหัวกระดาษ (0.8 ซม.) แล้วต่อด้วยเนื้อหา
-      `padding:${this.ir.header ? 0.8 : page.marginTopCm}cm ${page.marginRightCm}cm ${page.marginBottomCm}cm ${page.marginLeftCm}cm`,
+      `padding:${this.ir.header ? page.headerCm : page.marginTopCm}cm ${page.marginRightCm}cm ${page.marginBottomCm}cm ${page.marginLeftCm}cm`,
       `font-family:${fonts}`,
       `font-size:${page.sizePt}pt`,
     ].join(";");
@@ -164,6 +190,7 @@ class Html {
       mark(marking?.everyPage, "thd-mark-top", "top:0.3cm"),
       mark(marking?.firstPageLeft, "thd-mark-left", `top:0.2cm;left:${page.marginLeftCm}cm`),
       mark(marking?.everyPage, "thd-mark-bottom", "bottom:0.3cm"),
+      this.opts.showMargins ? this.guides() : "",
       this.ir.header ? `<div class="thd-header">${this.blocks(this.ir.header)}</div>` : "",
       this.blocks(this.ir.blocks),
       "</div>",

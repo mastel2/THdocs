@@ -1,4 +1,5 @@
-import type { OrgProfile, TemplatePack } from "@thdocs/core";
+import { marginFindings, type OrgProfile, type TemplatePack } from "@thdocs/core";
+import { PAGE } from "./layout";
 import { announcement, news, statement } from "./announcement";
 import { certificate } from "./certificate";
 import { PACK } from "./common";
@@ -35,8 +36,12 @@ export const thGovPack: TemplatePack = {
     certificate, minutes,
   ],
   demoProfile: DEMO_PROFILE,
+  page: PAGE,
 };
 
+// ทุกชนิดตรวจระยะขอบที่หน่วยงานปรับ เทียบมาตรฐานของชุดแม่แบบ
+for (const t of thGovPack.types) t.rules.push((_d, ctx) => marginFindings(PACK, PAGE, ctx.profile, "แนวทางการพิมพ์หนังสือราชการ"));
+
 export { announcement, bylaw, certificate, externalLetter, memo, memoProposal, minutes, news, order, regulation, stampLetter, statement };
-export { SPEC } from "./layout";
+export { PAGE, SPEC } from "./layout";
 export { pairOk, salutationFor } from "./salutation";

@@ -5,12 +5,11 @@
  * ค่าตำแหน่งที่ระเบียบไม่ได้ให้เป็นตัวเลข (เช่น จุดเริ่มวันที่/คำลงท้าย) เป็นค่าประมาณ
  * ปรับได้ที่นี่ที่เดียว และต้องยืนยันด้วยภาพจาก tools/preview เทียบแบบฟอร์มจริง
  */
-import { blank, para, type Block, type Context, type DocIR, type Marking, type PageSetup, type Run } from "@thdocs/core";
+import { blank, marginsFor, para, type Block, type Context, type DocIR, type Marking, type PageSetup, type PageStandard, type Run } from "@thdocs/core";
 
 export const SPEC = {
   font: "TH SarabunPSK",
   bodyPt: 16,
-  margin: { top: 1.5, bottom: 2, left: 3, right: 2 },
   textWidthCm: 16, // 21 - 3 - 2
   emblemLargeCm: 3,
   emblemSmallCm: 1.5,
@@ -31,14 +30,27 @@ export const SPEC = {
   red: "C00000",
 } as const;
 
+/**
+ * ค่าหน้ากระดาษ — ขอบซ้าย 3 / ขวา 2 ซม. ตรงกันทุกแหล่งที่อ้างแนวทาง ว 2019 (ตัวตรวจเตือนถ้าปรับต่าง)
+ * ขอบบน/ล่างแต่ละหน่วยงานใช้ต่างกัน (พบ 1.5 / 1.9 / 2.5 ซม.) — ตั้งต้น 2.5 ซม. เพื่อเว้นที่ประทับตรารับหนังสือ
+ * และลงทะเบียนรับในระบบสารบรรณอิเล็กทรอนิกส์ หน่วยงานปรับได้ในข้อมูลหน่วยงาน
+ */
+export const PAGE: PageStandard = {
+  margins: { topCm: 2.5, bottomCm: 2, leftCm: 3, rightCm: 2, headerCm: 1.25 },
+  standard: ["leftCm", "rightCm"],
+  note: "ขอบซ้าย 3 ซม. และขอบขวา 2 ซม. ตามแนวทางการพิมพ์หนังสือราชการ — ขอบบน/ล่างปรับตามแบบของหน่วยงาน",
+};
+
 export function pageSetup(ctx: Context): PageSetup {
+  const m = marginsFor("th-gov", PAGE, ctx.profile);
   return {
     widthCm: 21,
     heightCm: 29.7,
-    marginTopCm: SPEC.margin.top,
-    marginBottomCm: SPEC.margin.bottom,
-    marginLeftCm: SPEC.margin.left,
-    marginRightCm: SPEC.margin.right,
+    marginTopCm: m.topCm,
+    marginBottomCm: m.bottomCm,
+    marginLeftCm: m.leftCm,
+    marginRightCm: m.rightCm,
+    headerCm: m.headerCm,
     font: SPEC.font,
     sizePt: SPEC.bodyPt,
     thaiDigits: ctx.options.thaiDigits ?? true,

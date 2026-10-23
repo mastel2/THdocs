@@ -87,6 +87,8 @@ export interface PageSetup {
   marginBottomCm: number;
   marginLeftCm: number;
   marginRightCm: number;
+  /** ระยะหัวกระดาษ (เลขหน้า/ตารางควบคุมเอกสาร) จากขอบบน */
+  headerCm: number;
   font: string;
   sizePt: number;
   /** แปลงเลขอารบิกเป็นเลขไทย (ยกเว้น URL และอีเมล) */

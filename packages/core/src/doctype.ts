@@ -1,8 +1,28 @@
 import type { z } from "zod";
 import type { DocIR } from "./ir";
 
+/** ระยะขอบกระดาษ (ซม.) */
+export interface Margins {
+  topCm: number;
+  bottomCm: number;
+  leftCm: number;
+  rightCm: number;
+  /** ระยะหัวกระดาษจากขอบบน */
+  headerCm: number;
+}
+
+/** ค่าหน้ากระดาษของชุดแม่แบบ: ค่าตั้งต้น + ช่องที่เป็นมาตรฐาน (ตัวตรวจเตือนถ้าปรับต่าง) + ที่มา */
+export interface PageStandard {
+  margins: Margins;
+  /** ช่องที่มีมาตรฐานกำหนดชัด — ช่องอื่นแต่ละหน่วยงานปรับตามแบบของตนได้ */
+  standard: (keyof Margins)[];
+  note: string;
+}
+
 /** ข้อมูลหน่วยงาน/ผู้ใช้ที่กรอกครั้งเดียวแล้วใช้ซ้ำ */
 export interface OrgProfile {
+  /** ระยะขอบที่หน่วยงานปรับเอง แยกตามชุดแม่แบบ (id ของ TemplatePack) */
+  margins?: Record<string, Partial<Margins>>;
   orgName: string;
   /** ชื่อส่วนงานเจ้าของเรื่อง เช่น "กองคลัง" */
   unit: string;
@@ -95,4 +115,29 @@ export interface TemplatePack {
   types: DocTypeDef<any, any>[];
   /** ข้อมูลหน่วยงานสมมติ ใช้กับตัวอย่างเมื่อผู้ใช้ยังไม่ได้กรอกของตัวเอง */
   demoProfile?: OrgProfile;
+  page?: PageStandard;
+}
+
+const clampCm = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= 0.3 && v <= 8 ? v : fallback);
+
+/** ระยะขอบที่ใช้จริง = ค่าตั้งต้นของชุดแม่แบบ ทับด้วยค่าที่หน่วยงานปรับ (ค่าผิดปกติใช้ค่าตั้งต้น) */
+export function marginsFor(pack: string, std: PageStandard, profile: OrgProfile): Margins {
+  const o = profile.margins?.[pack] ?? {};
+  const m = std.margins;
+  return {
+    topCm: clampCm(o.topCm, m.topCm),
+    bottomCm: clampCm(o.bottomCm, m.bottomCm),
+    leftCm: clampCm(o.leftCm, m.leftCm),
+    rightCm: clampCm(o.rightCm, m.rightCm),
+    headerCm: clampCm(o.headerCm, m.headerCm),
+  };
+}
+
+/** เตือนเมื่อปรับช่องที่มีมาตรฐานกำหนดให้ต่างจากมาตรฐาน */
+export function marginFindings(pack: string, std: PageStandard, profile: OrgProfile, ref: string): Finding[] {
+  const used = marginsFor(pack, std, profile);
+  const label: Record<keyof Margins, string> = { topCm: "ขอบบน", bottomCm: "ขอบล่าง", leftCm: "ขอบซ้าย", rightCm: "ขอบขวา", headerCm: "ระยะหัวกระดาษ" };
+  return std.standard
+    .filter((k) => Math.abs(used[k] - std.margins[k]) > 0.05)
+    .map((k) => ({ level: "warning" as const, rule: "PAGE_MARGIN", message: `${label[k]} ${used[k]} ซม. ไม่ตรงมาตรฐาน (${std.margins[k]} ซม.)`, where: "profile.margins", ref }));
 }

@@ -7,6 +7,7 @@
  */
 import {
   cell,
+  marginsFor,
   para,
   placeholder,
   thaiDate,
@@ -17,6 +18,7 @@ import {
   type Facts,
   type Finding,
   type PageSetup,
+  type PageStandard,
   type Table,
 } from "@thdocs/core";
 
@@ -25,21 +27,29 @@ export const PACK = "iso";
 export const SPEC = {
   font: "TH SarabunPSK",
   bodyPt: 16,
-  margin: { top: 2, bottom: 2, left: 2.5, right: 2 },
   textWidthCm: 16.5, // 21 - 2.5 - 2
   indentCm: 0.75,
   gapPt: 6,
   shade: "E7ECF5",
 } as const;
 
+/** เอกสารระบบคุณภาพของเอกชนไม่มีระยะขอบบังคับ — ตั้งต้นใกล้ค่ามาตรฐานของ Word หน่วยงานปรับได้ทุกช่อง */
+export const PAGE: PageStandard = {
+  margins: { topCm: 2.5, bottomCm: 2, leftCm: 2.5, rightCm: 2, headerCm: 1.25 },
+  standard: [],
+  note: "เอกสารระบบคุณภาพไม่มีระยะขอบบังคับ — ใช้ตามแบบเอกสารขององค์กร",
+};
+
 export function pageSetup(ctx: Context): PageSetup {
+  const m = marginsFor(PACK, PAGE, ctx.profile);
   return {
     widthCm: 21,
     heightCm: 29.7,
-    marginTopCm: SPEC.margin.top,
-    marginBottomCm: SPEC.margin.bottom,
-    marginLeftCm: SPEC.margin.left,
-    marginRightCm: SPEC.margin.right,
+    marginTopCm: m.topCm,
+    marginBottomCm: m.bottomCm,
+    marginLeftCm: m.leftCm,
+    marginRightCm: m.rightCm,
+    headerCm: m.headerCm,
     font: SPEC.font,
     sizePt: SPEC.bodyPt,
     // เอกสารระบบคุณภาพของเอกชนส่วนใหญ่ใช้เลขอารบิก — เปลี่ยนได้ด้วย options.thaiDigits

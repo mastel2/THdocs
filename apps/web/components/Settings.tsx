@@ -1,17 +1,67 @@
 "use client";
-import type { OrgProfile } from "@thdocs/core";
+import { marginsFor, type Margins, type OrgProfile, type TemplatePack } from "@thdocs/core";
 import type { LLMChoice, ProviderInfo } from "../lib/registry";
 
 const MAX_EMBLEM = 600_000;
+
+const FIELDS: [keyof Margins, string][] = [
+  ["topCm", "บน"],
+  ["bottomCm", "ล่าง"],
+  ["leftCm", "ซ้าย"],
+  ["rightCm", "ขวา"],
+  ["headerCm", "หัวกระดาษ"],
+];
+
+/** ระยะขอบกระดาษแยกตามชุดแม่แบบ — ค่าที่ไม่ได้ปรับใช้ค่าตั้งต้นของชุดแม่แบบ */
+function MarginSettings({ pack, profile: p, onChange }: { pack: TemplatePack; profile: OrgProfile; onChange: (p: OrgProfile) => void }) {
+  const std = pack.page!;
+  const used = marginsFor(pack.id, std, p);
+  const own = p.margins?.[pack.id] ?? {};
+  const set = (k: keyof Margins, raw: string) => {
+    const v = Number(raw);
+    const next = { ...own };
+    if (raw === "" || !Number.isFinite(v)) delete next[k];
+    else next[k] = v;
+    onChange({ ...p, margins: { ...p.margins, [pack.id]: next } });
+  };
+  const changed = Object.keys(own).length > 0;
+  return (
+    <fieldset className="sf-array">
+      <legend>ระยะขอบกระดาษ — {pack.name}</legend>
+      <p className="hint">{std.note}</p>
+      <div className="margin-grid">
+        {FIELDS.map(([k, label]) => {
+          const isStd = std.standard.includes(k);
+          const off = Math.abs(used[k] - std.margins[k]) > 0.05;
+          return (
+            <label key={k} className={isStd && off ? "missing" : ""}>
+              {label}{isStd && <span className="hint"> (มาตรฐาน {std.margins[k]})</span>}
+              <span className="unit">
+                <input type="number" inputMode="decimal" step="0.1" min="0.3" max="8" value={own[k] ?? used[k]} onChange={(e) => set(k, e.target.value)} />
+                ซม.
+              </span>
+            </label>
+          );
+        })}
+      </div>
+      {changed && (
+        <button type="button" className="ghost small" onClick={() => { const { [pack.id]: _x, ...rest } = p.margins ?? {}; onChange({ ...p, margins: rest }); }}>
+          คืนค่าตั้งต้น
+        </button>
+      )}
+    </fieldset>
+  );
+}
 
 interface ProfileProps {
   profile: OrgProfile;
   onChange: (p: OrgProfile) => void;
   emblem: string | null;
   onEmblem: (dataUrl: string | null) => void;
+  packs?: TemplatePack[];
 }
 
-export function ProfileSettings({ profile: p, onChange, emblem, onEmblem }: ProfileProps) {
+export function ProfileSettings({ profile: p, onChange, emblem, onEmblem, packs = [] }: ProfileProps) {
   const set = (patch: Partial<OrgProfile>) => onChange({ ...p, ...patch });
   const signer = p.signer ?? { name: "", position: [] };
 
@@ -66,6 +116,8 @@ export function ProfileSettings({ profile: p, onChange, emblem, onEmblem }: Prof
         {emblem && <button type="button" className="ghost small" onClick={() => onEmblem(null)}>ลบตรา</button>}
       </div>
       <p className="hint">ระบบไม่มีตราครุฑให้ — หน่วยงานต้องใช้ไฟล์ตราของตนเอง ถ้าไม่ใส่ จะแสดงกรอบแทนตรา</p>
+      {packs.filter((pk) => pk.page).map((pk) => <MarginSettings key={pk.id} pack={pk} profile={p} onChange={onChange} />)}
+      <p className="hint">ติ๊ก "แสดงระยะขอบ" เหนือพรีวิวเพื่อดูเส้นขอบบนเอกสาร</p>
     </div>
   );
 }

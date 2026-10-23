@@ -1,6 +1,6 @@
 import type { OrgProfile, TemplatePack } from "@thdocs/core";
 import { car } from "./car";
-import { PACK } from "./common";
+import { PACK, PAGE } from "./common";
 import { form } from "./form";
 import { internalAudit } from "./internal-audit";
 import { managementReview } from "./management-review";
@@ -27,6 +27,7 @@ export const isoPack: TemplatePack = {
     internalAudit, car, managementReview,
   ],
   demoProfile: ISO_DEMO_PROFILE,
+  page: PAGE,
 };
 
 export { car, form, internalAudit, managementReview, policy, procedure, workInstruction };

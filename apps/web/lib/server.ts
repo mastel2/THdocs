@@ -71,6 +71,8 @@ export const ProfileSchema = z.object({
   docNoPrefix: z.string().max(100).optional(),
   signer: z.object({ name: z.string().max(200), position: z.array(z.string().max(300)).max(6) }).optional(),
   unitLabel: z.string().max(50).optional(),
+  // ระยะขอบที่หน่วยงานปรับ แยกตามชุดแม่แบบ — ค่าผิดปกติ marginsFor() ใช้ค่าตั้งต้นแทน
+  margins: z.record(z.string().max(40), z.object({ topCm: z.number(), bottomCm: z.number(), leftCm: z.number(), rightCm: z.number(), headerCm: z.number() }).partial()).optional(),
 }); // ไม่มี emblemPng: ห้ามรับ path จากผู้ใช้
 
 export function profileFrom(raw: unknown): OrgProfile {

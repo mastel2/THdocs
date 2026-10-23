@@ -45,6 +45,8 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   const [emblem, setEmblem] = useState<string | null>(null);
   const [llm, setLlm] = useState<LLMChoice>({ provider: "anthropic" });
   const [remember, setRemember] = useState(false);
+  /** แสดงเส้นระยะขอบบนพรีวิว */
+  const [guides, setGuides] = useState(false);
   const [panel, setPanel] = useState<Panel>(null);
 
   const [step, setStep] = useState<Step>("request");
@@ -112,22 +114,24 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
       const ctx = contextFromDraft(file, profile);
       const doc = assembleDraft(d, file, ctx);
       return {
-        html: renderHtml(d.layout(doc, ctx), { fallbackFonts: PREVIEW_FONTS, ...(emblem ? { emblemSrc: emblem } : {}) }),
+        html: renderHtml(d.layout(doc, ctx), { fallbackFonts: PREVIEW_FONTS, showMargins: guides, ...(emblem ? { emblemSrc: emblem } : {}) }),
         result: summarize(check(d, doc, ctx)),
         problem: null,
       };
     } catch (e) {
       return { html: null, result: null, problem: (e as Error).message };
     }
-  }, [file, profile, emblem]);
+  }, [file, profile, emblem, guides]);
 
   // ยังไม่มีร่าง: แสดงตัวอย่างของชนิดที่เลือก ให้เห็นภาพก่อนเริ่ม (ใช้ข้อมูลหน่วยงานของผู้ใช้ถ้ากรอกแล้ว)
   const exampleHtml = useMemo(() => {
     const ex = exampleDraft(def);
     if (!ex) return null;
-    const ctx = contextFromDraft(ex, profile.orgName ? profile : (PACKS.find((p) => p.types.includes(def))?.demoProfile ?? profile));
-    return renderHtml(def.layout(assembleDraft(def, ex, ctx), ctx), { fallbackFonts: PREVIEW_FONTS, ...(emblem ? { emblemSrc: emblem } : {}) });
-  }, [def, profile, emblem]);
+    // ยังไม่กรอกข้อมูลหน่วยงาน: ใช้หน่วยงานสมมติ แต่คงระยะขอบที่ผู้ใช้ปรับไว้
+    const demo = PACKS.find((p) => p.types.includes(def))?.demoProfile;
+    const ctx = contextFromDraft(ex, profile.orgName || !demo ? profile : { ...demo, margins: profile.margins });
+    return renderHtml(def.layout(assembleDraft(def, ex, ctx), ctx), { fallbackFonts: PREVIEW_FONTS, showMargins: guides, ...(emblem ? { emblemSrc: emblem } : {}) });
+  }, [def, profile, emblem, guides]);
 
   function startFromExample() {
     const ex = exampleDraft(def);
@@ -266,7 +270,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
           {panel === "profile" && (
             <div className="card">
               <h2>ข้อมูลหน่วยงาน</h2>
-              <ProfileSettings profile={profile} onChange={setProfile} emblem={emblem} onEmblem={setEmblem} />
+              <ProfileSettings profile={profile} onChange={setProfile} emblem={emblem} onEmblem={setEmblem} packs={PACKS} />
               <button className="primary" onClick={() => setPanel(null)}>เสร็จ</button>
             </div>
           )}
@@ -452,9 +456,9 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
           )}
           {notice && <p className="notice ok" role="status">{notice}</p>}
           {file ? (
-            <Preview html={view?.html ?? null} />
+            <Preview html={view?.html ?? null} guides={guides} onGuides={setGuides} />
           ) : (
-            <Preview html={exampleHtml} badge={`ตัวอย่าง${def.name} — เอกสารของคุณจะจัดรูปแบบแบบนี้`} />
+            <Preview html={exampleHtml} badge={`ตัวอย่าง${def.name} — เอกสารของคุณจะจัดรูปแบบแบบนี้`} guides={guides} onGuides={setGuides} />
           )}
           {file && <p className="hint center">ตัวอย่างบนจอ — การแบ่งหน้าจริงดูจากไฟล์ .docx · ระบบสร้าง <b>ร่าง</b> ผู้มีอำนาจต้องตรวจก่อนลงนาม</p>}
         </section>
