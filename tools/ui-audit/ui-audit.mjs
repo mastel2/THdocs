@@ -641,6 +641,20 @@ try {
     const t = await ev(`return T.pageText()`);
     return (t.includes('ด่วนที่สุด') && t.includes('ลับ')) || "ไม่ขึ้นในเอกสาร";
   });
+  await check("ดาวน์โหลด .docx / .dotx สร้างในเบราว์เซอร์ ไม่เรียก /api/docx และไฟล์อ่านได้ (ตัวตรวจผ่าน)", async () => {
+    await go("/", { storage: AI_FAKE });
+    await ev(`T.click('เริ่มจากฟอร์มเปล่า'); return 1`);
+    await until(`T.step() === 'ตรวจและแก้'`, 3000);
+    rmSync(dlDir, { recursive: true, force: true }); mkdirSync(dlDir, { recursive: true });
+    await ev(`T.click('ดาวน์โหลด .docx'); return 1`);
+    let f; const t0 = Date.now();
+    while (Date.now() - t0 < 8000) { f = readdirSync(dlDir).find((x) => x.endsWith(".docx")); if (f) break; await sleep(200); }
+    if (!f) return "ไม่ได้ไฟล์";
+    const hit = await ev(`return performance.getEntriesByType('resource').some((r) => r.name.includes('/api/docx'))`);
+    const z = await (await import("jszip")).default.loadAsync(readFileSync(join(dlDir, f)));
+    const x = await z.file("word/document.xml").async("string");
+    return (!hit && x.includes('w:left="1701"') && Object.keys(z.files).some((n) => n.startsWith("word/media/"))) || `hit=${hit}`;
+  });
   await check("แผงปรับข้อความไม่ล้นจอที่ 390px", async () => {
     await go("/", { width: 390, height: 800, storage: AI_FAKE });
     await ev(`T.click('ปรับข้อความ'); return 1`); await sleep(500);

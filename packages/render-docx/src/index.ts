@@ -1,5 +1,4 @@
 /** Document IR → .docx */
-import { readFileSync } from "node:fs";
 import {
   AlignmentType,
   BorderStyle,
@@ -29,7 +28,7 @@ import { placeholderPng, pngSize } from "./png";
 
 export interface RenderOptions {
   /** ไฟล์ตรา PNG (path หรือ Buffer) — ไม่มี = กรอบแทนตรา */
-  emblemPng?: string | Buffer;
+  emblemPng?: string | Uint8Array;
   /** ไฮไลต์ช่อง [ระบุ...] สีเหลือง (ค่าเริ่มต้น true) */
   highlightPlaceholders?: boolean;
   /** แทรกจุดตัดคำไทยที่มองไม่เห็น (ค่าเริ่มต้น true) */
@@ -56,12 +55,19 @@ const TAB: Record<"left" | "center" | "right", (typeof TabStopType)[keyof typeof
   right: TabStopType.RIGHT,
 };
 
+/** ตราจากไฟล์ (CLI) — fs ของ Node หาตอนใช้งาน เพื่อให้ renderer รันในเบราว์เซอร์ได้ */
+function readEmblemFile(path: string): Uint8Array {
+  const fs = (globalThis as { process?: { getBuiltinModule?: (n: string) => { readFileSync(p: string): Uint8Array } } }).process?.getBuiltinModule?.("node:fs");
+  if (!fs) throw new Error("อ่านไฟล์ตราจากพาธได้เฉพาะบน Node — ในเบราว์เซอร์ส่งเป็นข้อมูล PNG");
+  return fs.readFileSync(path);
+}
+
 class Renderer {
-  private readonly emblem: { data: Buffer; ratio: number };
+  private readonly emblem: { data: Uint8Array; ratio: number };
 
   constructor(private readonly ir: DocIR, private readonly opts: RenderOptions) {
     const src = opts.emblemPng;
-    const data = src ? (typeof src === "string" ? readFileSync(src) : src) : placeholderPng();
+    const data = src ? (typeof src === "string" ? readEmblemFile(src) : src) : placeholderPng();
     const { width, height } = pngSize(data);
     this.emblem = { data, ratio: width / height };
   }
@@ -270,8 +276,8 @@ class Renderer {
   }
 }
 
-export async function renderDocx(ir: DocIR, opts: RenderOptions = {}): Promise<Buffer> {
-  return Packer.toBuffer(new Renderer(ir, opts).build());
+export async function renderDocx(ir: DocIR, opts: RenderOptions = {}): Promise<Uint8Array> {
+  return new Uint8Array(await Packer.toArrayBuffer(new Renderer(ir, opts).build()));
 }
 
 export { drawPng, placeholderPng, pngSize } from "./png";

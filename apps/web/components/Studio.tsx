@@ -20,6 +20,7 @@ import { api, download, load, save } from "../lib/client";
 import { blobToBase64, insertDocx, officeReady, readOpenDocument, replaceSelection, selectedText } from "../lib/office";
 import { useInstall, useServiceWorker } from "./PwaRegister";
 import { BROWSER_PROVIDERS, PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
+import { buildDocx } from "../lib/docx";
 import { toDotx } from "@thdocs/render-docx/template";
 import { CheckDocx } from "./CheckDocx";
 import { Findings } from "./Findings";
@@ -215,7 +216,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   async function getDocx() {
     if (!file) return;
     const blob = await run("กำลังสร้างไฟล์", (signal) =>
-      api<Blob>("/api/docx", { file, profile, ...(emblem ? { emblem } : {}) }, signal),
+      buildDocx(file, profile, emblem),
     );
     if (blob) download(blob, `${findType(file.type)!.name}.docx`);
   }
@@ -224,7 +225,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   async function getDotx() {
     if (!file) return;
     const blob = await run("กำลังสร้างแม่แบบ", async (signal) => {
-      const docx = await api<Blob>("/api/docx", { file, profile, ...(emblem ? { emblem } : {}) }, signal);
+      const docx = await buildDocx(file, profile, emblem);
       return new Blob([new Uint8Array(await toDotx(await docx.arrayBuffer()))], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.template" });
     });
     if (blob) download(blob, `${findType(file.type)!.name} (แม่แบบ).dotx`);
@@ -234,7 +235,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
     if (!file) return;
     setNotice(null);
     const done = await run("กำลังแทรกลงเอกสาร", async (signal) => {
-      const blob = await api<Blob>("/api/docx", { file, profile, ...(emblem ? { emblem } : {}) }, signal);
+      const blob = await buildDocx(file, profile, emblem);
       return insertDocx(await blobToBase64(blob), where);
     });
     if (done === "full") setNotice("แทรกลงเอกสารแล้ว พร้อมขอบกระดาษ หัวกระดาษ และเลขหน้าตามแบบ");

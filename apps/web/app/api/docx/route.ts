@@ -19,7 +19,7 @@ export const POST = handle(async (req) => {
   const ctx = contextFromDraft(file, profileFrom(b.profile));
   if (b.emblem && !b.emblem.startsWith(PNG_PREFIX)) throw new HttpError(400, "ตราต้องเป็นไฟล์ PNG");
   const emblemPng = b.emblem ? Buffer.from(b.emblem.slice(PNG_PREFIX.length), "base64") : undefined;
-  let data: Buffer;
+  let data: Uint8Array;
   try {
     data = await renderDocx(def.layout(assembleDraft(def, file, ctx), ctx), emblemPng ? { emblemPng } : {});
   } catch (e) {

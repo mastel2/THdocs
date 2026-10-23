@@ -280,7 +280,7 @@ describe("/api/docx", () => {
   it("PNG ที่ถูกต้องใช้เป็นตราได้ และ PNG เสียได้ 400 ไม่ใช่ 500", async () => {
     const r = await load({ NODE_ENV: "production" });
     const { placeholderPng } = await import("@thdocs/render-docx");
-    const ok = `data:image/png;base64,${placeholderPng().toString("base64")}`;
+    const ok = `data:image/png;base64,${Buffer.from(placeholderPng()).toString("base64")}`;
     expect((await r.docx.POST(post({ file: SAMPLES.memo, profile: PROFILE, emblem: ok }))).status).toBe(200);
     const bad = `data:image/png;base64,${Buffer.from("ไม่ใช่ภาพ").toString("base64")}`;
     expect((await r.docx.POST(post({ file: SAMPLES.memo, profile: PROFILE, emblem: bad }))).status).toBe(400);
