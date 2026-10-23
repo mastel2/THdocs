@@ -112,6 +112,8 @@ class Html {
         else pending = `<span class="thd-float" style="top:-0.2cm">${this.emblem(b.heightCm, "")}</span>`;
       } else if (b.kind === "blank") {
         out.push("<p>&nbsp;</p>".repeat(b.lines));
+      } else if (b.kind === "rule") {
+        out.push(`<div style="width:${b.widthCm}cm;margin:${b.spaceBeforePt ?? 0}pt auto ${b.spaceAfterPt ?? 6}pt;border-bottom:1px solid #000"></div>`);
       } else {
         out.push(this.para(b, pending));
         pending = "";

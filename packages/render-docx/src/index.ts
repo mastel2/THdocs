@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import {
   AlignmentType,
+  BorderStyle,
   Document,
   Footer,
   Header,
@@ -62,6 +63,11 @@ class Renderer {
   private font() {
     const f = this.ir.page.font;
     return { ascii: f, hAnsi: f, cs: f, eastAsia: f };
+  }
+
+  private textWidthCm() {
+    const p = this.ir.page;
+    return p.widthCm - p.marginLeftCm - p.marginRightCm;
   }
 
   private text(t: string) {
@@ -131,6 +137,15 @@ class Renderer {
         else pendingFloat = [this.image(b)]; // ยึดกับย่อหน้าถัดไป
       } else if (b.kind === "blank") {
         for (let i = 0; i < b.lines; i++) out.push(new Paragraph({ keepNext: b.keepWithNext ?? false, children: [] }));
+      } else if (b.kind === "rule") {
+        // เส้นคั่น = ขอบล่างของย่อหน้าว่างที่บีบความกว้างด้วยเยื้องซ้ายขวาเท่ากัน
+        const side = tw(Math.max(0, (this.textWidthCm() - b.widthCm) / 2));
+        out.push(new Paragraph({
+          indent: { left: side, right: side },
+          spacing: { before: (b.spaceBeforePt ?? 0) * 20, after: (b.spaceAfterPt ?? 6) * 20, line: 120 },
+          border: { bottom: { style: BorderStyle.SINGLE, size: 6, color: "000000", space: 1 } },
+          children: [],
+        }));
       } else {
         out.push(this.paragraph(b, pendingFloat));
         pendingFloat = [];

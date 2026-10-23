@@ -1,8 +1,13 @@
 import type { OrgProfile, TemplatePack } from "@thdocs/core";
+import { announcement, news, statement } from "./announcement";
 import { certificate } from "./certificate";
 import { PACK } from "./common";
 import { externalLetter } from "./external-letter";
 import { memo, memoProposal } from "./memo";
+import { minutes } from "./minutes";
+import { order } from "./order";
+import { bylaw, regulation } from "./regulation";
+import { stampLetter } from "./stamp-letter";
 
 /** หน่วยงานสมมติสำหรับตัวอย่าง */
 export const DEMO_PROFILE: OrgProfile = {
@@ -15,13 +20,23 @@ export const DEMO_PROFILE: OrgProfile = {
   signer: { name: "นายตัวอย่าง ทดสอบระบบ", position: ["ผู้อำนวยการสำนักงานตัวอย่าง"] },
 };
 
+/** หนังสือราชการ ๑๑ ชนิดตามระเบียบงานสารบรรณ (+ บันทึกเสนอเรื่อง) เรียงตามหมวดของระเบียบ */
 export const thGovPack: TemplatePack = {
   id: PACK,
   name: "หนังสือราชการ (ระเบียบงานสารบรรณ)",
-  types: [externalLetter, memo, memoProposal, certificate],
+  types: [
+    // หนังสือติดต่อราชการ
+    externalLetter, memo, memoProposal, stampLetter,
+    // หนังสือสั่งการ
+    order, regulation, bylaw,
+    // หนังสือประชาสัมพันธ์
+    announcement, statement, news,
+    // หนังสือที่เจ้าหน้าที่ทำขึ้นหรือรับไว้เป็นหลักฐาน
+    certificate, minutes,
+  ],
   demoProfile: DEMO_PROFILE,
 };
 
-export { certificate, externalLetter, memo, memoProposal };
+export { announcement, bylaw, certificate, externalLetter, memo, memoProposal, minutes, news, order, regulation, stampLetter, statement };
 export { SPEC } from "./layout";
 export { pairOk, salutationFor } from "./salutation";

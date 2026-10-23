@@ -15,6 +15,19 @@ export interface Signer {
   position: string[];
 }
 
+/** ส่วนราชการหรือตำแหน่งที่ออกหนังสือ — ถ้าผู้ใช้ไม่ระบุใช้ชื่อหน่วยงานในโปรไฟล์ */
+export function issuerOf(facts: Facts, ctx: Context): string {
+  return facts.issuer?.trim() || ctx.profile.orgName;
+}
+
+export const ISSUER_FACT: FactSpec = { key: "issuer", question: "ผู้ออก (ส่วนราชการหรือตำแหน่ง — ไม่ระบุ = ชื่อหน่วยงาน)", required: false };
+
+/** ปีพุทธศักราชของเอกสาร */
+export const yearBE = (ctx: Context) => String((ctx.options.date ?? new Date()).getFullYear() + 543);
+
+/** แยกรายการบรรทัดละรายการจากข้อความที่ผู้ใช้กรอก */
+export const lines = (s: string | null | undefined) => (s ?? "").split("\n").map((x) => x.trim()).filter(Boolean);
+
 /** ผู้รับมาจากข้อมูลที่ผู้ใช้ให้เท่านั้น — ไม่ให้ AI เดา (โมเดลเล็กมักแต่ง เช่น "ผู้บังคับบัญชา") */
 export function recipientOf(facts: Facts): string {
   const r = (facts.recipient ?? "").trim().replace(/^(กราบเรียน|เรียน|นมัสการ)\s*/, "").trim();

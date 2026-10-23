@@ -15,6 +15,12 @@ export async function renderSample(file: DraftFile) {
   const rawXml = await zip.file("word/document.xml")!.async("string");
   const xml = rawXml.replace(/​/g, ""); // ตัดจุดตัดคำที่มองไม่เห็นออก เพื่อค้นข้อความได้ตรง
   const parts = Object.keys(zip.files);
-  const text = [...xml.matchAll(/<w:t(?: [^>]*)?>([^<]*)<\/w:t>/g)].map((m) => m[1]).join("").replace(/​/g, "");
+  const ENT: Record<string, string> = { "&quot;": '"', "&amp;": "&", "&lt;": "<", "&gt;": ">", "&apos;": "'" };
+  const text = [...xml.matchAll(/<w:t(?: [^>]*)?>([^<]*)<\/w:t>/g)]
+    .map((m) => m[1])
+    .join("")
+    .replace(/&(quot|amp|lt|gt|apos);/g, (e) => ENT[e]!)
+    .replace(/​/g, "") // จุดตัดคำที่มองไม่เห็น
+    .replace(/ /g, " "); // ช่องว่างห้ามตัดบรรทัดระหว่างตัวเลขกับหน่วย
   return { def, ctx, doc, buf, zip, rawXml, xml, text, parts };
 }

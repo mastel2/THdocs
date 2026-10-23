@@ -85,6 +85,19 @@ export function signature(signer: { name: string; position: string[] }, blankLin
   ];
 }
 
+/** บรรทัดกึ่งกลาง เช่น หัวคำสั่ง/ระเบียบ/ประกาศ */
+export function centered(text: string, opts: { bold?: boolean; spaceBeforePt?: number } = {}) {
+  return para([{ text, ...(opts.bold ? { bold: true } : {}) }], { align: "center", ...(opts.spaceBeforePt ? { spaceBeforePt: opts.spaceBeforePt } : {}) });
+}
+
+/** เส้นคั่นใต้หัวเรื่องของหนังสือสั่งการ/ประชาสัมพันธ์ */
+export const separator = (): Block => ({ kind: "rule", widthCm: 4, spaceBeforePt: 6, spaceAfterPt: 6 });
+
+/** บรรทัดวันที่ท้ายหนังสือ เช่น "สั่ง ณ วันที่ ..." เริ่มที่ตำแหน่งเดียวกับคำลงท้าย */
+export function dateLine(label: string, date: string) {
+  return para(`${label} ${date}`, { indentLeftCm: SPEC.midCm - 2, spaceBeforePt: SPEC.closingGapPt, keepWithNext: true });
+}
+
 /** ใส่เลขลำดับ ๑. ๒. เมื่อมีหลายรายการ */
 export function numbered(items: string[]): string[] {
   return items.length > 1 ? items.map((t, i) => `${i + 1}. ${t}`) : items;

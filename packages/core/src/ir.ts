@@ -49,7 +49,15 @@ export interface Blank {
   keepWithNext?: boolean;
 }
 
-export type Block = Para | Emblem | Blank;
+/** เส้นคั่นกลางหน้า เช่น ใต้หัวคำสั่ง/ระเบียบ/ประกาศ */
+export interface Separator {
+  kind: "rule";
+  widthCm: number;
+  spaceBeforePt?: number;
+  spaceAfterPt?: number;
+}
+
+export type Block = Para | Emblem | Blank | Separator;
 
 export interface PageSetup {
   widthCm: number;

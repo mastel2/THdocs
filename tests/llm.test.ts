@@ -65,6 +65,14 @@ describe("ภาษาไทย", () => {
     const { keepNumberUnits } = await import("@thdocs/core");
     expect(keepNumberUnits("จำนวน ๕๐ คน งบ 12,000 บาท")).toBe("จำนวน ๕๐ คน งบ 12,000 บาท");
     expect(keepNumberUnits("ปี 2569 คนละ")).toBe("ปี 2569 คนละ");
+    expect(keepNumberUnits("พ.ศ. ๒๕๖๙ ข้อ ๓")).toBe("พ.ศ. ๒๕๖๙ ข้อ ๓");
+  });
+
+  it("ไม่ตัดบรรทัดกลางคำประสม เช่น ผู้อำนวยการ การประชุม", async () => {
+    const { thaiWordBreaks } = await import("@thdocs/core");
+    expect(thaiWordBreaks("รายงานต่อผู้อำนวยการ")).not.toContain("ผู้​อำนวย");
+    expect(thaiWordBreaks("การประชุม")).not.toContain("การ​ประชุม");
+    expect(thaiWordBreaks("ขอเชิญ")).toContain("ขอ​เชิญ");
   });
 
   it("เลขไทยไม่แตะอีเมลและ URL", () => {

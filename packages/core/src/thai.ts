@@ -49,11 +49,14 @@ export const ZWSP = "​";
  * แทรก zero-width space ที่ขอบคำไทย ให้โปรแกรมตัดบรรทัดตรงขอบคำได้เสมอ
  * (Word บางสภาพแวดล้อมตัดเฉพาะที่ช่องว่าง แล้ว thaiDistribute ยืดตัวอักษรทั้งบรรทัด)
  */
+/** คำที่ต้องติดกับคำถัดไปเสมอ — ตัวตัดคำแยก "ผู้|อำนวยการ", "การ|ประชุม" ทำให้ตัดบรรทัดกลางคำประสม */
+const BOUND_PREFIX = new Set(["ผู้", "นัก", "การ", "ความ", "ชาว", "ช่าง", "เจ้า", "ที่", "ผู้ช่วย", "รอง"]);
+
 export function thaiWordBreaks(text: string): string {
   let out = "";
   let prev = "";
   for (const { segment } of WORDS.segment(text)) {
-    if (prev && THAI_CHAR.test(prev.at(-1)!) && THAI_CHAR.test(segment[0]!)) out += ZWSP;
+    if (prev && !BOUND_PREFIX.has(prev) && THAI_CHAR.test(prev.at(-1)!) && THAI_CHAR.test(segment[0]!)) out += ZWSP;
     out += segment;
     prev = segment;
   }
@@ -65,7 +68,9 @@ const NUM_UNIT = new RegExp(`([0-9๐-๙][0-9๐-๙,.]*) (${UNITS})(?![ก-๙
 
 /** ตัวเลขกับหน่วยห้ามแยกคนละบรรทัด ("๕๐ คน", "๑๒,๐๐๐ บาท") — ใช้ช่องว่างแบบไม่ตัดบรรทัด */
 export function keepNumberUnits(text: string): string {
-  return text.replace(NUM_UNIT, "$1 $2");
+  return text
+    .replace(NUM_UNIT, "$1 $2")
+    .replace(/(พ\.ศ\.|ข้อ|ฉบับที่|ครั้งที่|มาตรา|วันที่) ([0-9๐-๙])/g, "$1 $2"); // คำนำหน้าตัวเลข เช่น "พ.ศ. ๒๕๖๙"
 }
 
 /** ช่องที่ระบบไม่เดา: [ระบุ] หรือ [ระบุ: ชื่อผู้ลงนาม] */
