@@ -1,6 +1,7 @@
 "use client";
 import {
   assembleDraft,
+  blankDraft,
   check,
   contextFromDraft,
   exampleDraft,
@@ -8,24 +9,27 @@ import {
   toLLMSchema,
   type DraftFile,
   type Facts,
-  type Finding,
   type OrgProfile,
   type Secrecy,
   type Speed,
 } from "@thdocs/core";
 import { PAGE_CSS, renderHtml } from "@thdocs/render-html";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { aiDraft, aiFacts, aiRevise, isExternal } from "../lib/ai";
+import { aiDraft, aiFacts, aiRevise, aiRewrite, isExternal } from "../lib/ai";
 import { api, download, load, save } from "../lib/client";
-import { blobToBase64, insertDocx, officeReady, selectedText } from "../lib/office";
+import { blobToBase64, insertDocx, officeReady, readOpenDocument, replaceSelection, selectedText } from "../lib/office";
 import { useInstall, useServiceWorker } from "./PwaRegister";
 import { BROWSER_PROVIDERS, PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
+import { toDotx } from "@thdocs/render-docx/template";
+import { CheckDocx } from "./CheckDocx";
+import { Findings } from "./Findings";
 import { Preview } from "./Preview";
+import { RewriteText } from "./RewriteText";
 import { SchemaForm } from "./SchemaForm";
 import { LLMSettings, ProfileSettings } from "./Settings";
 
 type Step = "request" | "facts" | "edit";
-type Panel = "profile" | "llm" | null;
+type Panel = "profile" | "llm" | "check" | "rewrite" | null;
 
 const EMPTY_PROFILE: OrgProfile = { orgName: "", unit: "", address: [] };
 /** เครื่องที่ไม่มี TH Sarabun ใช้ Sarabun (Google Fonts) — render-html ปรับขนาดตาให้เท่ากันด้วย font-size-adjust */
@@ -140,6 +144,13 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
     return renderHtml(def.layout(assembleDraft(def, ex, ctx), ctx), { fallbackFonts: PREVIEW_FONTS, showMargins: guides, ...(emblem ? { emblemSrc: emblem } : {}) });
   }, [def, profile, emblem, guides]);
 
+  /** ฟอร์มเปล่า: ทุกช่องเป็น [ระบุ] ไม่เรียก AI — แก้ถ้อยคำเองแล้วดาวน์โหลด */
+  function startBlank() {
+    setFile(blankDraft(def));
+    setFacts({});
+    setStep("edit");
+  }
+
   function startFromExample() {
     const ex = exampleDraft(def);
     if (!ex) return;
@@ -209,6 +220,16 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
     if (blob) download(blob, `${findType(file.type)!.name}.docx`);
   }
 
+  /** แม่แบบ Word (.dotx): เปิดใน Word เป็นเอกสารใหม่ที่มีขอบ ฟอนต์ หัวกระดาษตามแบบ แล้วพิมพ์ต่อเอง */
+  async function getDotx() {
+    if (!file) return;
+    const blob = await run("กำลังสร้างแม่แบบ", async (signal) => {
+      const docx = await api<Blob>("/api/docx", { file, profile, ...(emblem ? { emblem } : {}) }, signal);
+      return new Blob([new Uint8Array(await toDotx(await docx.arrayBuffer()))], { type: "application/vnd.openxmlformats-officedocument.wordprocessingml.template" });
+    });
+    if (blob) download(blob, `${findType(file.type)!.name} (แม่แบบ).dotx`);
+  }
+
   async function insertIntoWord(where: "replace" | "cursor") {
     if (!file) return;
     setNotice(null);
@@ -266,6 +287,8 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
         <div className="brand">THdocs {!addin && <span>ร่างหนังสือราชการด้วย AI</span>}</div>
         <nav>
           {install && !addin && <button className="tab install" onClick={install}>ติดตั้งแอป</button>}
+          <button className={panel === "rewrite" ? "tab on" : "tab"} onClick={() => setPanel(panel === "rewrite" ? null : "rewrite")}>ปรับข้อความ</button>
+          <button className={panel === "check" ? "tab on" : "tab"} onClick={() => setPanel(panel === "check" ? null : "check")}>ตรวจไฟล์ Word</button>
           <button className={panel === "profile" ? "tab on" : "tab"} onClick={() => setPanel(panel === "profile" ? null : "profile")}>ข้อมูลหน่วยงาน</button>
           <button className={panel === "llm" ? "tab on" : "tab"} onClick={() => setPanel(panel === "llm" ? null : "llm")}>
             AI: {provider?.name ?? "…"}
@@ -288,6 +311,26 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
               <LLMSettings providers={allProviders} choice={llm} onChange={setLlm} remember={remember} onRemember={setRemember} />
               <button className="primary" onClick={() => setPanel(null)}>เสร็จ</button>
             </div>
+          )}
+
+          {panel === "rewrite" && (
+            <>
+              <RewriteText
+                needsSetup={needsSetup}
+                onSetup={() => setPanel("llm")}
+                externalName={provider?.external ? provider.name : undefined}
+                rewrite={(a, signal) => aiRewrite({ ...a, llm }, signal)}
+                {...(inWord ? { word: { read: selectedText, replace: replaceSelection } } : {})}
+              />
+              <button className="primary" onClick={() => setPanel(null)}>กลับไปร่างเอกสาร</button>
+            </>
+          )}
+
+          {panel === "check" && (
+            <>
+              <CheckDocx packs={PACKS} {...(inWord ? { readOpen: readOpenDocument } : {})} />
+              <button className="primary" onClick={() => setPanel(null)}>กลับไปร่างเอกสาร</button>
+            </>
           )}
 
           {!panel && (
@@ -373,6 +416,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
                   )}
                   <div className="actions">
                     <button className="primary" disabled={!request.trim() || !!busy || confidentialBlocked} onClick={analyze}>ถัดไป</button>
+                    <button type="button" className="ghost" onClick={startBlank}>เริ่มจากฟอร์มเปล่า (ไม่ใช้ AI)</button>
                     <label className="file ghost">
                       เปิดร่างที่บันทึกไว้
                       <input type="file" accept=".json,application/json" onChange={(e) => openDraft(e.target.files?.[0])} />
@@ -457,6 +501,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
           {file && !addin && (
             <div className="toolbar">
               <button className="primary" disabled={!!busy || !view?.html} onClick={getDocx}>ดาวน์โหลด .docx</button>
+              <button className="ghost" disabled={!!busy || !view?.html} onClick={getDotx}>ดาวน์โหลดแม่แบบ .dotx</button>
               <button className="ghost" disabled={!view?.html} onClick={() => window.print()}>พิมพ์ / PDF</button>
               <button className="ghost" onClick={saveDraft}>บันทึกร่าง</button>
               <button className="ghost" onClick={reset}>เริ่มใหม่</button>
@@ -472,20 +517,5 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
         </section>
       </main>
     </div>
-  );
-}
-
-function Findings({ items }: { items: Finding[] }) {
-  if (!items.length) return <p className="notice ok">ไม่พบข้อผิดพลาดตามกฎที่ตรวจ</p>;
-  const label = { error: "ผิด", warning: "ควรแก้", info: "แนะนำ" } as const;
-  return (
-    <ul className="findings">
-      {items.map((f, i) => (
-        <li key={i} className={f.level}>
-          <span className="badge">{label[f.level]}</span>
-          <span>{f.message}{f.ref && <span className="hint"> — {f.ref}</span>}</span>
-        </li>
-      ))}
-    </ul>
   );
 }

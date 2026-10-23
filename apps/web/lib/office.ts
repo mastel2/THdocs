@@ -105,3 +105,48 @@ export async function blobToBase64(b: Blob): Promise<string> {
   for (let i = 0; i < buf.length; i += 0x8000) s += String.fromCharCode(...buf.subarray(i, i + 0x8000));
   return btoa(s);
 }
+
+interface OfficeFile {
+  size: number;
+  sliceCount: number;
+  getSliceAsync(i: number, cb: (r: { status: string; value: { data: number[] }; error?: { message: string } }) => void): void;
+  closeAsync(): void;
+}
+
+/** อ่านไฟล์ .docx ของเอกสารที่เปิดอยู่ใน Word (ไม่แก้เอกสาร) */
+export function readOpenDocument(): Promise<Uint8Array> {
+  const doc = (window.Office as unknown as { context: { document: { getFileAsync(type: string, opt: { sliceSize: number }, cb: (r: { status: string; value: OfficeFile; error?: { message: string } }) => void): void } } } | undefined)?.context.document;
+  if (!doc) return Promise.reject(new Error("ต้องเปิดจากใน Microsoft Word"));
+  return new Promise((resolve, reject) => {
+    doc.getFileAsync("compressed", { sliceSize: 1 << 20 }, (r) => {
+      if (r.status !== "succeeded") return reject(new Error(r.error?.message ?? "อ่านเอกสารไม่ได้"));
+      const file = r.value;
+      const parts: Uint8Array[] = [];
+      const next = (i: number) => {
+        file.getSliceAsync(i, (s) => {
+          if (s.status !== "succeeded") {
+            file.closeAsync();
+            return reject(new Error(s.error?.message ?? "อ่านเอกสารไม่ได้"));
+          }
+          parts.push(Uint8Array.from(s.value.data));
+          if (i + 1 < file.sliceCount) return next(i + 1);
+          file.closeAsync();
+          const out = new Uint8Array(parts.reduce((n, p) => n + p.length, 0));
+          let at = 0;
+          for (const p of parts) (out.set(p, at), (at += p.length));
+          resolve(out);
+        });
+      };
+      next(0);
+    });
+  });
+}
+
+/** แทนข้อความที่เลือกด้วยข้อความธรรมดา (จัดรูปแบบตัวอักษรของจุดนั้นตามเดิม) */
+export async function replaceSelection(text: string): Promise<void> {
+  return word().run(async (ctx) => {
+    const sel = ctx.document.getSelection() as unknown as { insertText(t: string, loc: "Replace"): unknown };
+    sel.insertText(text, "Replace");
+    await ctx.sync();
+  });
+}

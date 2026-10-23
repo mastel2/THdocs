@@ -5,7 +5,7 @@
  * การสั่งแก้จึงแก้ได้เฉพาะถ้อยคำ — ชั้นความลับ เลขที่ วันที่ ผู้ลงนาม ไม่หลุดหายเพราะ AI
  */
 import { z } from "zod";
-import type { Context, DocTypeDef, DraftOptions, FactSpec, Facts, OrgProfile } from "./doctype";
+import type { Context, DocTypeDef, DraftOptions, FactSpec, Facts, OrgProfile, Secrecy } from "./doctype";
 import { MASK_NOTE, PiiMasker, type MaskedItem } from "./privacy";
 
 export interface LLMRequest {
@@ -185,4 +185,32 @@ export function normalizeProfile(p: Partial<OrgProfile>): OrgProfile {
 export function contextFromDraft(file: DraftFile, profile: Partial<OrgProfile>): Context {
   const { date, ...rest } = file.options;
   return { profile: normalizeProfile(profile), options: { ...rest, ...(date ? { date: new Date(date) } : {}) } };
+}
+
+export const REWRITE_MODES = {
+  formal: "ปรับเป็นภาษาราชการที่สุภาพ กระชับ ชัดเจน ตัดภาษาพูดและคำลงท้ายแบบพูด",
+  shorter: "ทำให้กระชับขึ้น ตัดคำซ้ำซ้อน โดยไม่ตัดสาระสำคัญ",
+  fix: "แก้คำผิด การสะกด และไวยากรณ์เท่าที่จำเป็น ส่วนที่ถูกอยู่แล้วให้คงถ้อยคำเดิม",
+} as const;
+export type RewriteMode = keyof typeof REWRITE_MODES;
+
+/**
+ * ปรับข้อความที่ผู้ใช้เขียนเอง (เช่น ข้อความที่เลือกใน Word) — ไม่แต่งข้อเท็จจริงเพิ่ม และรักษาช่อง [ระบุ: …]
+ * ผ่านการปิดบังข้อมูลส่วนบุคคลและการกันชั้นความลับเหมือนการร่างเอกสาร
+ */
+export async function rewriteText(llm: LLM, text: string, mode: RewriteMode, secrecy?: Secrecy, audit?: PrivacyAudit): Promise<string> {
+  guard(llm, { profile: normalizeProfile({}), options: { ...(secrecy ? { secrecy } : {}) } });
+  llm = protect(llm, audit);
+  const system = [
+    "คุณช่วยปรับข้อความภาษาไทยสำหรับงานเอกสารราชการ",
+    `งาน: ${REWRITE_MODES[mode]}`,
+    "ใช้เฉพาะข้อเท็จจริงในข้อความเดิม ห้ามเพิ่มชื่อ วันที่ ตัวเลข หรือเหตุผลที่ไม่มี",
+    "ช่อง [ระบุ: …] ให้คงไว้ตามเดิม จำนวนย่อหน้าให้เท่าเดิม (คั่นด้วยบรรทัดใหม่)",
+    'ตอบเป็น JSON {"text": "<ข้อความที่ปรับแล้ว>"}',
+  ].join("\n");
+  const schema = z.object({ text: z.string() });
+  const raw = await llm.generateJson({ system, user: text, schema: toLLMSchema(schema), schemaName: "rewrite" });
+  const r = schema.safeParse(raw);
+  if (!r.success || !r.data.text.trim()) throw new Error("AI ตอบไม่ตรงโครงสร้าง ลองอีกครั้ง");
+  return r.data.text.trim();
 }

@@ -494,7 +494,8 @@ try {
   sec("11. PWA และ API");
   await check("manifest ติดตั้งแอปได้ — Chrome ไม่พบข้อบกพร่องการติดตั้ง", async () => {
     await go("/");
-    const r = await send("Page.getInstallabilityErrors");
+    let r = await send("Page.getInstallabilityErrors");
+    for (let i = 0; i < 5 && !r.result; i++) { await sleep(500); r = await send("Page.getInstallabilityErrors"); } // เพิ่งโหลดหน้า CDP อาจตอบ error ครั้งแรก
     return (r.result.installabilityErrors ?? []).length === 0 || JSON.stringify(r.result.installabilityErrors);
   });
   await check("ไอคอนแอปทุกขนาดโหลดได้ (192/512/maskable/apple)", async () => {
@@ -505,6 +506,136 @@ try {
     const r = await fetch(`${BASE}/api/config`);
     const j = await r.json();
     return r.headers.get("cache-control") === "no-store" && j.providers.length >= 3 || "ผิด";
+  });
+
+  // ============================================================== 12. เอกสารเปล่า + ตรวจไฟล์ Word
+  sec("12. เอกสารเปล่า และตรวจไฟล์ Word ที่เขียนเอง");
+  await go("/");
+  let blankDocx;
+  await check("'เริ่มจากฟอร์มเปล่า' → เข้าขั้นตรวจและแก้ ไม่เรียก AI มีช่อง [ระบุ] และผลตรวจเตือนช่องที่ยังไม่กรอก", async () => {
+    await ev(`T.select(0, 'memo'); return 1`); await sleep(300);
+    await ev(`T.click('เริ่มจากฟอร์มเปล่า'); return 1`);
+    await until(`T.step() === 'ตรวจและแก้'`, 3000);
+    const r = await ev(`return { ph: T.pageText().includes('[ระบุ'), find: document.querySelectorAll('.findings li').length, err: T.err(), badge: !!document.querySelector('.example-badge') }`);
+    return (r.ph && r.find > 0 && !r.err && !r.badge) || JSON.stringify(r);
+  });
+  await check("ฟอร์มเปล่า: แก้ช่องเรื่องเองแล้วค่าขึ้นในเอกสาร (ไม่ต้องใช้ AI)", async () => {
+    await ev(`T.details('แก้ถ้อยคำเอง').open = true; return 1`); await sleep(300);
+    await ev(`T.setField('เรื่อง', 'ขออนุมัติทดสอบฟอร์มเปล่า'); return 1`); await sleep(500);
+    return await ev(`return T.pageText().includes('ขออนุมัติทดสอบฟอร์มเปล่า')`);
+  });
+  await check("ฟอร์มเปล่า: ดาวน์โหลด .docx ได้", async () => {
+    rmSync(dlDir, { recursive: true, force: true }); mkdirSync(dlDir, { recursive: true });
+    await ev(`T.click('ดาวน์โหลด .docx'); return 1`);
+    let f; const t0 = Date.now();
+    while (Date.now() - t0 < 8000) { f = readdirSync(dlDir).find((x) => x.endsWith(".docx")); if (f) break; await sleep(200); }
+    if (!f) return "ไม่ได้ไฟล์";
+    blankDocx = readFileSync(join(dlDir, f));
+    return blankDocx.subarray(0, 2).toString() === "PK" || "ไม่ใช่ zip";
+  });
+  const JSZip = (await import("jszip")).default;
+  const goodB64 = () => blankDocx.toString("base64");
+  const badB64 = async () => {
+    const z = await JSZip.loadAsync(blankDocx);
+    let x = await z.file("word/document.xml").async("string");
+    x = x.replace(/(<w:pgMar[^>]*?)w:left="\d+"/, '$1w:left="1134"');
+    z.file("word/document.xml", x);
+    return (await z.generateAsync({ type: "uint8array" })).reduce((s, b) => s + String.fromCharCode(b), "");
+  };
+  const DOCX_MIME = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+  await go("/");
+  await check("แถบ 'ตรวจไฟล์ Word' เปิด/ปิดได้ และอยู่ในจอ", async () => {
+    await ev(`T.click('ตรวจไฟล์ Word'); return 1`);
+    await until(`document.querySelector('input[type=file][accept*=docx]')`, 3000);
+    const r = await ev(`const b = document.querySelector('.side .card').getBoundingClientRect(); return [b.left >= 0, b.right <= innerWidth, T.overflowX() <= 1]`);
+    return r.every(Boolean) || JSON.stringify(r);
+  });
+  await check("ตรวจไฟล์ที่ THdocs สร้าง: อ่านได้ ขอบซ้าย/ขวาถูก (ไม่มีข้อผิดรูปแบบ) แต่เตือนช่อง [ระบุ]", async () => {
+    await ev(`T.file(document.querySelector('input[type=file][accept*=docx]'), 'ฟอร์มเปล่า.docx', '${DOCX_MIME}', '${goodB64()}'); return 1`);
+    await until(`document.querySelector('.findings')`, 6000);
+    const t = await ev(`return document.querySelector('.side').textContent`);
+    return (t.includes('ยังไม่ได้กรอก') && !t.includes('ขอบซ้าย') && !t.includes('ไม่ใช่ A4') && t.includes('ฟอร์มเปล่า.docx')) || t.slice(0, 300);
+  });
+  await check("ตรวจไฟล์ที่ขอบซ้ายผิด → แจ้ง 'ขอบซ้าย … ไม่ตรงมาตรฐาน'", async () => {
+    const b64 = Buffer.from(await badB64(), "binary").toString("base64");
+    await ev(`T.file(document.querySelector('input[type=file][accept*=docx]'), 'ขอบผิด.docx', '${DOCX_MIME}', '${b64}'); return 1`);
+    await until(`document.querySelector('.side').textContent.includes('ขอบผิด.docx')`, 6000);
+    const t = await ev(`return document.querySelector('.side').textContent`);
+    return t.includes('ขอบซ้าย') && t.includes('ไม่ตรงมาตรฐาน') || t.slice(0, 300);
+  });
+  await check("ไฟล์ที่ไม่ใช่ docx → ข้อความผิดพลาดที่อ่านออก ไม่ค้าง", async () => {
+    await ev(`T.text(document.querySelector('input[type=file][accept*=docx]'), 'x.docx', '${DOCX_MIME}', 'not a zip'); return 1`);
+    await until(`document.querySelector('.notice.err')`, 6000);
+    return !(await ev(`return !!document.querySelector('.notice.busy')`));
+  });
+  await check("ไฟล์ไม่ถูกอัปโหลด: ระหว่างตรวจไม่มีคำขอเครือข่ายไป /api", async () => {
+    const apiCalls = () => events.filter((e) => e.method === "Network.requestWillBeSent" && /\/api\//.test(e.params.request.url)).length;
+    const before = apiCalls();
+    const b64 = goodB64();
+    await ev(`T.file(document.querySelector('input[type=file][accept*=docx]'), 'อีกครั้ง.docx', '${DOCX_MIME}', '${b64}'); return 1`);
+    await until(`document.querySelector('.side').textContent.includes('อีกครั้ง.docx')`, 6000);
+    const after = apiCalls();
+    return after === before || `มีคำขอ /api เพิ่ม ${after - before}`;
+  });
+  await check("ปุ่ม 'กลับไปร่างเอกสาร' กลับหน้าคำขอ", async () => {
+    await ev(`T.click('กลับไปร่างเอกสาร'); return 1`);
+    await until(`T.step() === 'คำขอ'`, 3000);
+    return true;
+  });
+  await check("แผงตรวจไฟล์ไม่ล้นจอที่ 390px", async () => {
+    await go("/", { width: 390, height: 800 });
+    await ev(`T.click('ตรวจไฟล์ Word'); return 1`); await sleep(500);
+    return (await ev(`return T.overflowX()`)) <= 1;
+  });
+
+  // ============================================================== 13. แม่แบบ .dotx และปรับข้อความ
+  sec("13. แม่แบบ .dotx และปรับข้อความที่เขียนเอง");
+  await go("/", { storage: AI_FAKE });
+  await check("ปุ่ม 'ดาวน์โหลดแม่แบบ .dotx' → ได้ไฟล์ .dotx ที่ชนิดเนื้อหาเป็น template", async () => {
+    await ev(`T.click('เริ่มจากฟอร์มเปล่า'); return 1`);
+    await until(`T.step() === 'ตรวจและแก้'`, 3000);
+    rmSync(dlDir, { recursive: true, force: true }); mkdirSync(dlDir, { recursive: true });
+    await ev(`T.click('ดาวน์โหลดแม่แบบ .dotx'); return 1`);
+    let f; const t0 = Date.now();
+    while (Date.now() - t0 < 8000) { f = readdirSync(dlDir).find((x) => x.endsWith(".dotx")); if (f) break; await sleep(200); }
+    if (!f) return "ไม่ได้ไฟล์ .dotx";
+    const z = await (await import("jszip")).default.loadAsync(readFileSync(join(dlDir, f)));
+    const ct = await z.file("[Content_Types].xml").async("string");
+    return ct.includes("wordprocessingml.template.main+xml") || "ชนิดเนื้อหาไม่ใช่ template";
+  });
+  await go("/", { storage: AI_FAKE });
+  await check("แผง 'ปรับข้อความ' เปิดได้ ปุ่มปรับกดไม่ได้เมื่อยังไม่มีข้อความ และนอก Word ไม่มีปุ่มดึงจาก Word", async () => {
+    await ev(`T.click('ปรับข้อความ'); return 1`);
+    await until(`T.btn('ปรับข้อความ') && document.querySelectorAll('textarea').length`, 3000);
+    const r = await ev(`const cards = [...document.querySelectorAll('.side button')].filter((b) => b.textContent.trim() === 'ปรับข้อความ'); return { dis: cards.at(-1).disabled, word: !!T.btnIn('ใช้ข้อความที่เลือกใน Word') }`);
+    return (r.dis && !r.word) || JSON.stringify(r);
+  });
+  await check("พิมพ์ข้อความ → กดปรับ → ได้ผลลัพธ์จาก AI จำลอง (เบราว์เซอร์เรียกตรง ไม่ผ่านเซิร์ฟเวอร์) และมีปุ่มคัดลอก", async () => {
+    await ev(`T.set(document.querySelector('.side textarea'), 'เลยขอบอกว่าอยากจะจัดอบรมให้เด็กๆ ครับ'); return 1`);
+    const apiBefore = await ev(`return performance.getEntriesByType('resource').filter((r) => r.name.includes('/api/rewrite')).length`);
+    await ev(`[...document.querySelectorAll('.side button')].filter((b) => b.textContent.trim() === 'ปรับข้อความ').at(-1).click(); return 1`);
+    await until(`[...document.querySelectorAll('.side textarea')].some((t) => t.value.includes('ขอเรียนว่าจะจัดอบรม'))`, 8000);
+    const apiAfter = await ev(`return performance.getEntriesByType('resource').filter((r) => r.name.includes('/api/rewrite')).length`);
+    return (apiAfter === apiBefore && !!(await ev(`return !!T.btn('คัดลอก')`))) || "เรียกผ่านเซิร์ฟเวอร์หรือไม่มีปุ่มคัดลอก";
+  });
+  await check("ผลลัพธ์แก้ไขเองได้ในช่องผลลัพธ์", async () => {
+    await ev(`const t = [...document.querySelectorAll('.side textarea')].at(-1); T.set(t, t.value + ' (แก้เอง)'); return 1`);
+    await sleep(200);
+    return await ev(`return [...document.querySelectorAll('.side textarea')].at(-1).value.endsWith('(แก้เอง)')`);
+  });
+  await go("/");
+  await check("ยังไม่ตั้งค่า AI → กดปรับ เปิดหน้าตั้งค่า AI (ไม่ส่งข้อความ)", async () => {
+    await ev(`T.click('ปรับข้อความ'); return 1`);
+    await until(`document.querySelector('.side textarea')`, 3000);
+    await ev(`T.set(document.querySelector('.side textarea'), 'ทดสอบ'); return 1`);
+    await ev(`[...document.querySelectorAll('.side button')].filter((b) => b.textContent.trim() === 'ปรับข้อความ').at(-1).click(); return 1`);
+    await until(`document.body.textContent.includes('ตั้งค่า AI')`, 3000);
+    return true;
+  });
+  await check("แผงปรับข้อความไม่ล้นจอที่ 390px", async () => {
+    await go("/", { width: 390, height: 800, storage: AI_FAKE });
+    await ev(`T.click('ปรับข้อความ'); return 1`); await sleep(500);
+    return (await ev(`return T.overflowX()`)) <= 1;
   });
 } finally {
   const failed = results.filter((r) => !r.ok);

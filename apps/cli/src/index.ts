@@ -7,6 +7,8 @@
  *   thdocs revise ร่าง.json "<คำสั่งแก้>"
  *   thdocs render ร่าง.json [-o out.docx]
  *   thdocs check ร่าง.json
+ *   thdocs check-docx ไฟล์.docx [--pack th-gov|iso]
+ *   thdocs blank -t memo [-o out.docx]
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { createInterface } from "node:readline/promises";
@@ -14,6 +16,7 @@ import { parseArgs } from "node:util";
 import {
   ConfidentialError,
   assembleDraft,
+  blankDraft,
   check,
   contextFromDraft,
   draft,
@@ -32,7 +35,7 @@ import {
   type Speed,
 } from "@thdocs/core";
 import { LLMError, PROVIDERS, createLLM } from "@thdocs/llm";
-import { renderDocx } from "@thdocs/render-docx";
+import { inspectDocx, inspectOptionsFor, renderDocx, toDotx } from "@thdocs/render-docx";
 import { isoPack } from "@thdocs/templates-iso";
 import { thGovPack } from "@thdocs/templates-thgov";
 
@@ -50,6 +53,8 @@ const HELP = `THdocs — ร่างเอกสารด้วย AI แล้
   revise <ร่าง.json> "<คำสั่งแก้>"        แก้ถ้อยคำ
   render <ร่าง.json>                    สร้าง .docx จากร่าง (ไม่เรียก AI)
   check <ร่าง.json>                     ตรวจตามระเบียบ
+  check-docx <ไฟล์.docx>                ตรวจไฟล์ Word ที่เขียนเอง (ขอบ ฟอนต์ ตรา ข้อความ)
+  blank -t <ชนิด>                       สร้างเอกสารเปล่า (ทุกช่องเป็น [ระบุ]) ไว้กรอกใน Word
 
 ตัวเลือก:
   -t, --type <ชนิด>         ${TYPES.map((t) => t.id).join(" | ")}
@@ -62,6 +67,7 @@ const HELP = `THdocs — ร่างเอกสารด้วย AI แล้
       --fact key=value      กำหนดข้อเท็จจริงเอง (ใส่ซ้ำได้)
       --speed <ระดับ>       ${SPEEDS.join(" | ")}
       --secrecy <ระดับ>     ${SECRECY.join(" | ")} (ห้ามส่ง AI ภายนอก)
+      --pack <ชุด>          ชุดแม่แบบที่ใช้ตรวจ check-docx (ค่าเริ่มต้น th-gov)
       --emblem <ไฟล์.png>   ตราหน่วยงาน (ไม่มี = กรอบแทนตรา)
       --latin-digits        ใช้เลขอารบิก
       --no-ask              ไม่ถามกลับ ช่องที่ขาดใส่ [ระบุ]
@@ -118,10 +124,11 @@ async function ask(def: DocTypeDef, facts: Facts): Promise<Facts> {
 
 async function writeOutputs(def: DocTypeDef, file: DraftFile, ctx: Context, out: string | undefined, jsonOut: string | undefined, emblem?: string) {
   const docxPath = out ?? `${def.name}.docx`;
-  const jsonPath = jsonOut ?? docxPath.replace(/\.docx$/i, "") + ".json";
+  const jsonPath = jsonOut ?? docxPath.replace(/\.(docx|dotx)$/i, "") + ".json";
   const doc = assembleDraft(def, file, ctx);
   const emblemPng = emblem ?? ctx.profile.emblemPng;
-  writeFileSync(docxPath, await renderDocx(def.layout(doc, ctx), emblemPng ? { emblemPng } : {}));
+  const docx = await renderDocx(def.layout(doc, ctx), emblemPng ? { emblemPng } : {});
+  writeFileSync(docxPath, /\.dotx$/i.test(docxPath) ? await toDotx(docx) : docx); // ลงท้าย .dotx = แม่แบบ Word
   writeFileSync(jsonPath, JSON.stringify(file, null, 2));
   report(def, doc, ctx, `สร้าง ${docxPath} (ร่างเก็บที่ ${jsonPath})`);
 }
@@ -154,6 +161,7 @@ async function main() {
       speed: { type: "string" },
       secrecy: { type: "string" },
       emblem: { type: "string" },
+      pack: { type: "string" },
       "latin-digits": { type: "boolean" },
       "no-ask": { type: "boolean" },
       help: { type: "boolean", short: "h" },
@@ -226,6 +234,24 @@ async function main() {
       const def = findType(file.type);
       const ctx = contextFromDraft(file, profile);
       return report(def, assembleDraft(def, file, ctx), ctx, a1!);
+    }
+
+    case "check-docx": {
+      if (!a1) fail("ต้องระบุไฟล์ .docx");
+      const pack = PACKS.find((p) => p.id === (v.pack ?? "th-gov"));
+      if (!pack) fail(`ไม่รู้จักชุดแม่แบบ '${v.pack}' — ใช้ ${PACKS.map((p) => p.id).join(" | ")}`);
+      const { findings } = await inspectDocx(readFileSync(a1), inspectOptionsFor(pack));
+      const s = summarize(findings);
+      console.log(`${a1}  — error ${s.errors} · warning ${s.warnings} · info ${s.infos}`);
+      for (const f of s.findings) console.log(`  [${f.level}] ${f.message}${f.where ? `  (${f.where})` : ""}`);
+      if (s.errors) process.exitCode = 1;
+      return;
+    }
+
+    case "blank": {
+      const def = findType(v.type);
+      const file = blankDraft(def);
+      return writeOutputs(def, file, contextFromDraft(file, profile), v.out ?? `${def.name} (เปล่า).docx`, v["json-out"], v.emblem);
     }
 
     default:

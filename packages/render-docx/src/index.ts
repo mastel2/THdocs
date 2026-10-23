@@ -275,3 +275,5 @@ export async function renderDocx(ir: DocIR, opts: RenderOptions = {}): Promise<B
 }
 
 export { drawPng, placeholderPng, pngSize } from "./png";
+export * from "./inspect";
+export * from "./template";
