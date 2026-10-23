@@ -655,6 +655,38 @@ try {
     const x = await z.file("word/document.xml").async("string");
     return (!hit && x.includes('w:left="1701"') && Object.keys(z.files).some((n) => n.startsWith("word/media/"))) || `hit=${hit}`;
   });
+  // Office.js จำลอง (ไม่ใช่ Word จริง): ทดสอบตรรกะอ่านเอกสารเป็นชิ้น ๆ / อ่านและแทนที่ข้อความที่เลือก ของหน้า /addin
+  const FAKE_OFFICE = `
+    window.__sel = 'เลยขอบอกว่าอยากจะจัดอบรม'; window.__replaced = null; window.__closed = false;
+    const B64 = ${JSON.stringify(blankDocx.toString("base64"))};
+    window.Office = { onReady: async () => ({ host: 'Word' }), context: { requirements: { isSetSupported: () => true }, document: {
+      getFileAsync: (type, opt, cb) => { const bytes = Uint8Array.from(atob(B64), (c) => c.charCodeAt(0)); const size = 4096; const n = Math.ceil(bytes.length / size);
+        cb({ status: 'succeeded', value: { size: bytes.length, sliceCount: n, getSliceAsync: (i, cb2) => cb2({ status: 'succeeded', value: { data: Array.from(bytes.slice(i * size, (i + 1) * size)) } }), closeAsync() { window.__closed = true; } } }); } } } };
+    window.Word = { run: async (fn) => fn({ document: { body: { text: '', load() {}, insertFileFromBase64() {} }, getSelection() { return { text: window.__sel, load() {}, insertText(t) { window.__replaced = t; }, insertFileFromBase64() {} }; } }, sync: async () => {} }) };`;
+  const fakeId = (await send("Page.addScriptToEvaluateOnNewDocument", { source: FAKE_OFFICE })).result.identifier;
+  await go("/addin", { width: 380, height: 900, storage: AI_FAKE });
+  await check("add-in (Office.js จำลอง): 'ตรวจเอกสารที่เปิดอยู่' อ่านไฟล์จากเอกสารเป็นชิ้น ๆ แล้วแสดงผลตรวจ", async () => {
+    await until(`T.btnIn('ตรวจไฟล์ Word')`, 5000);
+    await ev(`T.click('ตรวจไฟล์ Word'); return 1`);
+    await until(`T.btn('ตรวจเอกสารที่เปิดอยู่')`, 3000);
+    await ev(`T.click('ตรวจเอกสารที่เปิดอยู่'); return 1`);
+    await until(`document.querySelector('.findings')`, 8000);
+    const r = await ev(`return { t: document.querySelector('.side').textContent, closed: window.__closed }`);
+    return (r.t.includes('เอกสารที่เปิดอยู่') && r.t.includes('ยังไม่ได้กรอก') && r.closed) || r.t.slice(0, 200);
+  });
+  await check("add-in (Office.js จำลอง): ดึงข้อความที่เลือก → ปรับ → 'แทนที่ข้อความที่เลือกใน Word' ส่งผลลัพธ์กลับ", async () => {
+    await ev(`T.click('กลับไปร่างเอกสาร'); return 1`);
+    await ev(`T.click('ปรับข้อความ'); return 1`);
+    await until(`T.btnIn('ใช้ข้อความที่เลือกใน Word')`, 3000);
+    await ev(`T.click('ใช้ข้อความที่เลือกใน Word'); return 1`);
+    await until(`document.querySelector('.side textarea').value.includes('อยากจะจัดอบรม')`, 3000);
+    await ev(`[...document.querySelectorAll('.side button')].filter((b) => b.textContent.trim() === 'ปรับข้อความ').at(-1).click(); return 1`);
+    await until(`T.btnIn('แทนที่ข้อความที่เลือกใน Word')`, 8000);
+    await ev(`T.click('แทนที่ข้อความที่เลือกใน Word'); return 1`);
+    await until(`window.__replaced`, 3000);
+    return (await ev(`return window.__replaced`)).includes('ขอเรียนว่าจะจัดอบรม') || "ข้อความที่แทนที่ไม่ตรง";
+  });
+  await send("Page.removeScriptToEvaluateOnNewDocument", { identifier: fakeId });
   await check("แผงปรับข้อความไม่ล้นจอที่ 390px", async () => {
     await go("/", { width: 390, height: 800, storage: AI_FAKE });
     await ev(`T.click('ปรับข้อความ'); return 1`); await sleep(500);
