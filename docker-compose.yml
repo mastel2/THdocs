@@ -1,0 +1,38 @@
+# THdocs ติดตั้งเอง
+#   docker compose up -d --build                       เว็บอย่างเดียว (ผู้ใช้ใส่ API key ของตนเองในหน้าตั้งค่า AI)
+#   docker compose --profile local-ai up -d --build    เว็บ + Ollama ในเครื่อง (ข้อมูลไม่ออกนอกเครื่อง)
+#   docker compose exec ollama ollama pull qwen3.5:9b  ดึงโมเดล (ครั้งแรก ต้องมีที่ว่าง/หน่วยความจำพอ)
+# แล้วเปิด http://localhost:3000
+services:
+  web:
+    build: .
+    image: thdocs
+    ports:
+      - "127.0.0.1:${THDOCS_PORT:-3000}:3000"   # เปิดให้เครื่องอื่นใช้: ใส่ reverse proxy + HTTPS หน้าเว็บนี้ ไม่เปิดพอร์ตตรง
+    environment:
+      # AI ที่เซิร์ฟเวอร์เรียกให้ (ไม่ตั้ง = ให้ผู้ใช้ใส่ key ในหน้าตั้งค่า AI)
+      THDOCS_OLLAMA_URL: ${THDOCS_OLLAMA_URL:-}
+      THDOCS_LMSTUDIO_URL: ${THDOCS_LMSTUDIO_URL:-}
+      # 1 = ใช้ API key ของเซิร์ฟเวอร์แทนผู้ใช้ (เฉพาะใช้ภายในองค์กร) — ใส่ key ใน .env ไม่ใส่ในไฟล์นี้
+      THDOCS_SERVER_KEYS: ${THDOCS_SERVER_KEYS:-}
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      THDOCS_PUBLIC_URL: ${THDOCS_PUBLIC_URL:-}   # โดเมนจริง (https://...) ใช้สร้าง manifest ของ Word add-in
+      THDOCS_RATE_LIMIT: ${THDOCS_RATE_LIMIT:-}
+    read_only: true
+    tmpfs: ["/tmp"]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    restart: unless-stopped
+
+  ollama:
+    profiles: ["local-ai"]
+    image: ollama/ollama:latest   # ปักเป็น digest/เวอร์ชันก่อนใช้งานจริง
+    volumes:
+      - ollama:/root/.ollama
+    restart: unless-stopped
+    # ไม่เปิดพอร์ตออกนอก network ของ compose — เว็บเรียกผ่าน http://ollama:11434
+
+volumes:
+  ollama:

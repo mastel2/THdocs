@@ -1,0 +1,13 @@
+node_modules
+**/node_modules
+.next
+**/.next
+out
+.git
+.env
+private
+*.ttf
+*.otf
+*.log
+tests
+tools
