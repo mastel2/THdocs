@@ -55,6 +55,8 @@ export function Studio() {
   const [busy, setBusy] = useState<string | null>(null);
   const [elapsed, setElapsed] = useState(0);
   const [error, setError] = useState<string | null>(null);
+  /** สรุปข้อมูลส่วนบุคคลที่ปิดบังก่อนส่ง AI ภายนอกครั้งล่าสุด เช่น "ชื่อ 1, โทร 1" */
+  const [masked, setMasked] = useState("");
   const abort = useRef<AbortController | null>(null);
 
   // โหลดค่าที่จำไว้ (หลัง mount เพื่อไม่ให้ HTML ฝั่งเซิร์ฟเวอร์ต่างจากฝั่งเบราว์เซอร์)
@@ -149,28 +151,33 @@ export function Studio() {
   async function analyze() {
     if (needsSetup) return setPanel("llm");
     const r = await run("กำลังอ่านคำขอ", (signal) =>
-      api<{ facts: Facts; missing: string[] }>("/api/facts", { type: typeId, request, profile, options, known: {}, llm }, signal),
+      api<{ facts: Facts; missing: string[]; masked: string }>("/api/facts", { type: typeId, request, profile, options, known: {}, llm }, signal),
     );
     if (!r) return;
     setFacts(r.facts);
     setMissing(r.missing);
+    setMasked(r.masked);
     setStep("facts");
   }
 
   async function makeDraft() {
-    const f = await run(`กำลังร่าง${def.name}`, (signal) =>
-      api<DraftFile>("/api/draft", { type: typeId, request, facts, profile, options, llm }, signal),
+    const r = await run(`กำลังร่าง${def.name}`, (signal) =>
+      api<{ file: DraftFile; masked: string }>("/api/draft", { type: typeId, request, facts, profile, options, llm }, signal),
     );
-    if (!f) return;
-    setFile(f);
+    if (!r) return;
+    setFile(r.file);
+    setMasked(r.masked);
     setStep("edit");
   }
 
   async function reviseDraft() {
     if (!file || !instruction.trim()) return;
-    const f = await run("กำลังแก้ไข", (signal) => api<DraftFile>("/api/revise", { file, instruction, profile, llm }, signal));
-    if (!f) return;
-    setFile(f);
+    const r = await run("กำลังแก้ไข", (signal) =>
+      api<{ file: DraftFile; masked: string }>("/api/revise", { file, instruction, profile, llm }, signal),
+    );
+    if (!r) return;
+    setFile(r.file);
+    setMasked(r.masked);
     setInstruction("");
   }
 
@@ -254,6 +261,11 @@ export function Studio() {
               </ol>
 
               {error && <p className="notice err" role="alert">{error}</p>}
+              {masked && provider?.external && step !== "request" && (
+                <p className="notice ok">
+                  ปิดบังข้อมูลส่วนบุคคลก่อนส่งให้ {provider.name}: {masked} — ค่าจริงไม่ถูกส่งไป และระบบใส่กลับในเอกสารให้แล้ว
+                </p>
+              )}
               {busy && (
                 <div className="notice busy" role="status">
                   <span className="spinner" aria-hidden /> {busy}… {elapsed} วินาที

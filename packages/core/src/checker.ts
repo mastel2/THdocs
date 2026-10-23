@@ -40,7 +40,7 @@ export function hasThaiPhrase(text: string, phrase: string): boolean {
 }
 
 /** เศษจากโมเดลที่ตอบผิดรูป: วงเล็บ/เครื่องหมายแบบ JSON หรือคำแบบ kebab-case เช่น "details-in-sentence" */
-const DEBRIS = /[{}[\]]|"\s*:|\b[a-z]+(?:-[a-z]+){1,}\b/;
+const DEBRIS = /[{}[\]⟦⟧]|"\s*:|\b[a-z]+(?:-[a-z]+){1,}\b/; // ⟦⟧ = รหัสปิดบังที่ AI ทำเพี้ยนจนคืนค่าไม่ได้
 
 function debris(text: string): boolean {
   if (/@|https?:\/\//.test(text)) return false;

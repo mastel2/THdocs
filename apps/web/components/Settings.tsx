@@ -91,7 +91,7 @@ export function LLMSettings({ providers, choice, onChange, remember, onRemember 
       {info && (
         <p className={info.external ? "notice warn" : "notice ok"}>
           {info.external
-            ? `คำขอและข้อมูลในเอกสารจะถูกส่งไปยัง ${info.name} — ห้ามใช้กับเอกสารชั้นความลับ`
+            ? `คำขอและเนื้อหาจะถูกส่งไปยัง ${info.name} โดยปิดบังชื่อบุคคล เลขบัตร โทรศัพท์ อีเมล และเลขบัญชีก่อนส่ง — ห้ามใช้กับเอกสารชั้นความลับ`
             : "ประมวลผลในเครื่อง/เครือข่ายของคุณ ข้อมูลไม่ออกไปภายนอก ใช้กับเอกสารชั้นความลับได้"}
         </p>
       )}

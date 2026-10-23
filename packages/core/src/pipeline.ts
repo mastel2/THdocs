@@ -6,6 +6,7 @@
  */
 import { z } from "zod";
 import type { Context, DocTypeDef, DraftOptions, FactSpec, Facts, OrgProfile } from "./doctype";
+import { MASK_NOTE, PiiMasker, type MaskedItem } from "./privacy";
 
 export interface LLMRequest {
   system: string;
@@ -60,8 +61,32 @@ function guard(llm: LLM, ctx: Context) {
 
 const json = (v: unknown) => JSON.stringify(v, null, 1);
 
-export async function extractFacts(llm: LLM, def: DocTypeDef, request: string, ctx: Context, known: Facts = {}) {
+/** รายการที่ถูกปิดบังระหว่างงานหนึ่งครั้ง — ให้หน้าจอแจ้งผู้ใช้ได้ว่าปิดบังอะไรไปบ้าง */
+export interface PrivacyAudit {
+  masked: MaskedItem[];
+}
+
+/** AI ภายนอก: ปิดบังข้อมูลส่วนบุคคลขาไป คืนค่าจริงขากลับ | AI ในเครื่อง: ส่งตรง */
+function protect(llm: LLM, audit?: PrivacyAudit): LLM {
+  if (!llm.external) return llm;
+  return {
+    id: llm.id,
+    model: llm.model,
+    external: true,
+    async generateJson(req) {
+      const m = new PiiMasker();
+      const system = m.mask(req.system);
+      const user = m.mask(req.user);
+      const out = await llm.generateJson({ ...req, system: m.items.length ? `${system}\n\n${MASK_NOTE}` : system, user });
+      if (audit) for (const i of m.items) if (!audit.masked.some((a) => a.value === i.value)) audit.masked.push(i);
+      return m.unmask(out);
+    },
+  };
+}
+
+export async function extractFacts(llm: LLM, def: DocTypeDef, request: string, ctx: Context, known: Facts = {}, audit?: PrivacyAudit) {
   guard(llm, ctx);
+  llm = protect(llm, audit);
   const shape = Object.fromEntries(def.facts.map((f) => [f.key, z.string().nullable()]));
   const schema = z.object(shape);
   const system = [
@@ -106,16 +131,18 @@ const BASE_RULES = [
   "แต่ละย่อหน้าเป็นประโยคสมบูรณ์ที่อ่านต่อเนื่อง รวมรายละเอียด (วัน เวลา สถานที่ จำนวน งบประมาณ) ไว้ในประโยค ไม่แยกเป็นข้อสั้น ๆ ทีละบรรทัด",
 ];
 
-export async function draft<W>(llm: LLM, def: DocTypeDef<W>, request: string, facts: Facts, ctx: Context): Promise<DraftFile> {
+export async function draft<W>(llm: LLM, def: DocTypeDef<W>, request: string, facts: Facts, ctx: Context, audit?: PrivacyAudit): Promise<DraftFile> {
   guard(llm, ctx);
+  llm = protect(llm, audit);
   const system = [...BASE_RULES, "", `ชนิดเอกสาร: ${def.name}`, def.guidance].join("\n");
   const user = `คำขอ: ${request}\n\nข้อเท็จจริง:\n${json(dropEmpty(facts))}\n\nหน่วยงาน: ${ctx.profile.orgName} / ${ctx.profile.unit}`;
   const wording = await askWording(llm, def, system, user);
   return toDraftFile(def, facts, wording, ctx);
 }
 
-export async function revise<W>(llm: LLM, def: DocTypeDef<W>, file: DraftFile, instruction: string, ctx: Context): Promise<DraftFile> {
+export async function revise<W>(llm: LLM, def: DocTypeDef<W>, file: DraftFile, instruction: string, ctx: Context, audit?: PrivacyAudit): Promise<DraftFile> {
   guard(llm, ctx);
+  llm = protect(llm, audit);
   const system = [...BASE_RULES, "แก้ถ้อยคำตามคำสั่ง ส่วนที่ไม่ได้สั่งให้คงเดิม", "", `ชนิดเอกสาร: ${def.name}`, def.guidance].join("\n");
   const user = `ถ้อยคำปัจจุบัน:\n${json(file.wording)}\n\nข้อเท็จจริง:\n${json(dropEmpty(file.facts))}\n\nคำสั่งแก้ไข: ${instruction}`;
   const wording = await askWording(llm, def, system, user);

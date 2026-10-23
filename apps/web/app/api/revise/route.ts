@@ -1,4 +1,4 @@
-import { contextFromDraft, revise } from "@thdocs/core";
+import { contextFromDraft, maskSummary, revise, type PrivacyAudit } from "@thdocs/core";
 import { z } from "zod";
 import { findType } from "../../../lib/registry";
 import { LLMChoiceSchema, draftFileFrom, handle, llmFrom, profileFrom, rateLimit, readJson } from "../../../lib/server";
@@ -16,5 +16,7 @@ export const POST = handle(async (req) => {
   const file = draftFileFrom(b.file);
   // ชั้นความลับมาจากไฟล์ร่าง — การตรวจ AI ภายนอกทำใน revise()
   const ctx = contextFromDraft(file, profileFrom(b.profile));
-  return Response.json(await revise(llmFrom(b.llm), findType(file.type)!, file, b.instruction, ctx));
+  const audit: PrivacyAudit = { masked: [] };
+  const revised = await revise(llmFrom(b.llm), findType(file.type)!, file, b.instruction, ctx, audit);
+  return Response.json({ file: revised, masked: maskSummary(audit.masked) });
 });

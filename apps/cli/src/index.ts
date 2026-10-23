@@ -18,6 +18,7 @@ import {
   contextFromDraft,
   draft,
   extractFacts,
+  maskSummary,
   missingFacts,
   revise,
   summarize,
@@ -26,6 +27,7 @@ import {
   type DraftFile,
   type Facts,
   type OrgProfile,
+  type PrivacyAudit,
   type Secrecy,
   type Speed,
 } from "@thdocs/core";
@@ -123,6 +125,10 @@ async function writeOutputs(def: DocTypeDef, file: DraftFile, ctx: Context, out:
   report(def, doc, ctx, `สร้าง ${docxPath} (ร่างเก็บที่ ${jsonPath})`);
 }
 
+function reportMasked(audit: PrivacyAudit, provider: string) {
+  if (audit.masked.length) console.error(`ปิดบังข้อมูลส่วนบุคคลก่อนส่งให้ ${provider}: ${maskSummary(audit.masked)}`);
+}
+
 function report(def: DocTypeDef, doc: unknown, ctx: Context, head: string) {
   const s = summarize(check(def, doc, ctx));
   console.log(`${head}  — error ${s.errors} · warning ${s.warnings} · info ${s.infos}`);
@@ -187,10 +193,12 @@ async function main() {
       };
       const model = llm();
       console.error(`AI: ${model.id} ${model.model}${model.external ? " (ข้อมูลออกนอกเครื่อง)" : " (ในเครื่อง)"}`);
-      let { facts } = await extractFacts(model, def, a1, ctx, parseFacts(v.fact));
+      const audit: PrivacyAudit = { masked: [] };
+      let { facts } = await extractFacts(model, def, a1, ctx, parseFacts(v.fact), audit);
       if (!v["no-ask"] && process.stdin.isTTY) facts = await ask(def, facts);
       console.error(`กำลังร่าง${def.name}…`);
-      const file = await draft(model, def, a1, facts, ctx);
+      const file = await draft(model, def, a1, facts, ctx, audit);
+      reportMasked(audit, model.id);
       return writeOutputs(def, file, ctx, v.out, v["json-out"], v.emblem);
     }
 
@@ -199,7 +207,10 @@ async function main() {
       const file = readDraft(a1);
       const def = findType(file.type);
       const ctx = contextFromDraft(file, profile);
-      const revised = await revise(llm(), def, file, a2, ctx);
+      const audit: PrivacyAudit = { masked: [] };
+      const model = llm();
+      const revised = await revise(model, def, file, a2, ctx, audit);
+      reportMasked(audit, model.id);
       return writeOutputs(def, revised, ctx, v.out ?? a1!.replace(/\.json$/i, ".docx"), v["json-out"] ?? a1, v.emblem);
     }
 
