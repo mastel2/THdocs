@@ -1,0 +1,11 @@
+THdocs
+Copyright (c) 2026 THdocs
+
+ซอฟต์แวร์นี้ใช้ไลบรารีภายนอกต่อไปนี้ (สัญญาอนุญาต MIT) — เมื่อแจกจ่ายต้องแนบประกาศลิขสิทธิ์ของแต่ละไลบรารี
+ซึ่งอยู่ในไฟล์ LICENSE ของแต่ละแพ็กเกจใน node_modules
+
+- docx 9.9.0            https://github.com/dolanmiu/docx
+- zod 4.6.5             https://github.com/colinhacks/zod
+- @anthropic-ai/sdk     https://github.com/anthropics/anthropic-sdk-typescript
+
+ตราครุฑ ตราหน่วยงาน และฟอนต์ ไม่รวมอยู่ในซอฟต์แวร์นี้ ผู้ใช้ต้องจัดหาและใช้ตามกฎหมายและเงื่อนไขของเจ้าของ

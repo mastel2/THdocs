@@ -1,0 +1,10 @@
+node_modules/
+out/
+.env
+*.log
+# ตรา/ฟอนต์/แม่แบบของหน่วยงาน — ผู้ใช้จัดหาเอง ห้ามเข้า repo
+private/
+*.ttf
+*.otf
+.next/
+*.tsbuildinfo

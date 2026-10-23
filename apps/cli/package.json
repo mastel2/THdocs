@@ -1,0 +1,8 @@
+{
+  "name": "@thdocs/cli",
+  "version": "0.0.1",
+  "private": true,
+  "type": "module",
+  "exports": { ".": "./src/index.ts" },
+  "dependencies": { "@thdocs/core": "0.0.1", "@thdocs/llm": "0.0.1", "@thdocs/render-docx": "0.0.1", "@thdocs/templates-thgov": "0.0.1" }
+}

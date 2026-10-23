@@ -1,0 +1,29 @@
+{
+  "name": "thdocs",
+  "private": true,
+  "version": "0.0.1",
+  "description": "THdocs — ร่างเอกสารราชการและเอกสารมาตรฐานด้วย AI แล้วจัดรูปแบบตามแบบที่กำหนด",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "thdocs": "tsx apps/cli/src/index.ts",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p apps/web/tsconfig.json --noEmit",
+    "web": "npm run dev -w @thdocs/web",
+    "samples": "tsx examples/render-samples.ts out/samples",
+    "preview": "node tools/preview/preview.mjs out/samples"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "jszip": "3.10.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3",
+    "vitest": "5.0.3"
+  }
+}
