@@ -7,6 +7,7 @@
  */
 import type { LLM, LLMRequest } from "@thdocs/core";
 import { LLMError } from "./errors";
+export { LLMError };
 
 export interface OpenAICompatOptions {
   id: string;
@@ -35,7 +36,7 @@ export class OpenAICompatLLM implements LLM {
 
   async generateJson(req: LLMRequest): Promise<unknown> {
     for (;;) {
-      const res = await this.post(this.body(req, this.mode));
+      const res = await this.post(this.body(req, this.mode), req.signal);
       if ((res.status === 400 || res.status === 422) && this.mode === "json_schema") {
         this.mode = "json_object"; // จำไว้ ไม่ต้องลองซ้ำ
         continue;
@@ -60,16 +61,19 @@ export class OpenAICompatLLM implements LLM {
     };
   }
 
-  private async post(body: unknown): Promise<Response> {
+  private async post(body: unknown, userSignal?: AbortSignal): Promise<Response> {
     const f = this.opts.fetch ?? fetch;
+    const timeout = AbortSignal.timeout(this.opts.timeoutMs ?? 300_000);
     try {
       return await f(`${this.opts.baseUrl.replace(/\/$/, "")}/chat/completions`, {
         method: "POST",
         headers: { "Content-Type": "application/json", ...(this.opts.apiKey ? { Authorization: `Bearer ${this.opts.apiKey}` } : {}) },
         body: JSON.stringify(body),
-        signal: AbortSignal.timeout(this.opts.timeoutMs ?? 300_000),
+        signal: userSignal ? AbortSignal.any([timeout, userSignal]) : timeout,
       });
     } catch (e) {
+      // ผู้ใช้กดยกเลิก: ส่ง AbortError ต่อให้ชั้นบนเงียบ ไม่ใช่ error ว่าเชื่อมต่อไม่ได้
+      if (userSignal?.aborted) throw userSignal.reason instanceof Error ? userSignal.reason : new DOMException("Aborted", "AbortError");
       throw new LLMError(`${this.id}: เชื่อมต่อ ${this.opts.baseUrl} ไม่ได้ (${(e as Error).message})`, { cause: e });
     }
   }
@@ -86,5 +90,28 @@ export function parseJson(text: string, source = "llm"): unknown {
     return JSON.parse(t.slice(start, end + 1));
   } catch {
     throw new LLMError(`${source}: JSON ไม่สมบูรณ์`);
+  }
+}
+
+/** รายชื่อโมเดลของเซิร์ฟเวอร์ที่พูด OpenAI API (Ollama, LM Studio, vLLM) — ใช้ตรวจการเชื่อมต่อด้วย */
+export async function listModels(baseUrl: string, opts: { apiKey?: string; fetch?: typeof fetch; signal?: AbortSignal } = {}): Promise<string[]> {
+  const f = opts.fetch ?? fetch;
+  const timeout = AbortSignal.timeout(10_000);
+  const res = await f(`${baseUrl.replace(/\/$/, "")}/models`, {
+    headers: opts.apiKey ? { Authorization: `Bearer ${opts.apiKey}` } : {},
+    signal: opts.signal ? AbortSignal.any([timeout, opts.signal]) : timeout,
+  });
+  if (!res.ok) throw new LLMError(`${baseUrl}: ${res.status}`);
+  const data = (await res.json()) as { data?: { id?: string }[] };
+  return (data.data ?? []).map((m) => m.id).filter((x): x is string => !!x);
+}
+
+/** URL ชี้ไปเครื่องตัวเองหรือเครือข่ายภายใน (localhost, 127.x, 10.x, 192.168.x, 172.16-31.x) */
+export function isLocalUrl(url: string): boolean {
+  try {
+    const h = new URL(url).hostname;
+    return h === "localhost" || h === "127.0.0.1" || h === "[::1]" || h === "::1" || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(h);
+  } catch {
+    return false;
   }
 }

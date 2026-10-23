@@ -1,5 +1,8 @@
 "use client";
 import { marginsFor, type Margins, type OrgProfile, type TemplatePack } from "@thdocs/core";
+import { listModels } from "@thdocs/llm/openai-compat";
+import { useEffect, useState } from "react";
+import { isExternal, llmUrl } from "../lib/ai";
 import type { LLMChoice, ProviderInfo } from "../lib/registry";
 
 const MAX_EMBLEM = 600_000;
@@ -132,39 +135,95 @@ interface LLMProps {
 
 export function LLMSettings({ providers, choice, onChange, remember, onRemember }: LLMProps) {
   const info = providers.find((p) => p.id === choice.provider);
+  const browser = !!info?.browserSide;
+  const url = llmUrl(choice);
+  const external = info ? (browser ? isExternal(info, choice) : info.external) : true;
+  const [check, setCheck] = useState<{ state: "idle" | "busy" | "ok" | "fail"; models: string[]; text: string }>({ state: "idle", models: [], text: "" });
+  const origin = typeof location === "undefined" ? "" : location.origin;
+
+  // เปลี่ยนผู้ให้บริการ/URL แล้วผลตรวจเดิมใช้ไม่ได้
+  useEffect(() => setCheck({ state: "idle", models: [], text: "" }), [choice.provider, url]);
+
+  async function test() {
+    setCheck({ state: "busy", models: [], text: "" });
+    try {
+      const models = await listModels(url, choice.apiKey?.trim() ? { apiKey: choice.apiKey.trim() } : {});
+      setCheck({ state: "ok", models, text: models.length ? `เชื่อมต่อได้ พบ ${models.length} โมเดล` : "เชื่อมต่อได้ แต่ยังไม่มีโมเดล (ดาวน์โหลดโมเดลก่อน)" });
+      if (models.length && !choice.model) onChange({ ...choice, model: models[0] });
+    } catch {
+      setCheck({ state: "fail", models: [], text: `เบราว์เซอร์เชื่อมต่อ ${url} ไม่ได้ — ดูวิธีตั้งค่าด้านล่าง` });
+    }
+  }
+
   return (
     <div className="form">
       <label>
         ผู้ให้บริการ AI
         <select value={choice.provider} onChange={(e) => onChange({ provider: e.target.value })}>
-          {providers.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          <optgroup label="ผ่านเซิร์ฟเวอร์ THdocs">
+            {providers.filter((p) => !p.browserSide).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </optgroup>
+          <optgroup label="รันบนเครื่องคุณ (ไม่ผ่านเซิร์ฟเวอร์ THdocs)">
+            {providers.filter((p) => p.browserSide).map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </optgroup>
         </select>
       </label>
       {info && (
-        <p className={info.external ? "notice warn" : "notice ok"}>
-          {info.external
+        <p className={external ? "notice warn" : "notice ok"}>
+          {external
             ? `คำขอและเนื้อหาจะถูกส่งไปยัง ${info.name} โดยปิดบังชื่อบุคคล เลขบัตร โทรศัพท์ อีเมล และเลขบัญชีก่อนส่ง — ห้ามใช้กับเอกสารชั้นความลับ`
-            : "ประมวลผลในเครื่อง/เครือข่ายของคุณ ข้อมูลไม่ออกไปภายนอก ใช้กับเอกสารชั้นความลับได้"}
+            : browser
+              ? "เบราว์เซอร์ของคุณเรียก AI ตรง ๆ เนื้อหาเอกสารไม่ผ่านเซิร์ฟเวอร์ THdocs เลย ใช้กับเอกสารชั้นความลับได้ และใช้ออฟไลน์ได้เมื่อติดตั้งแอปแล้ว"
+              : "ประมวลผลในเครื่อง/เครือข่ายของเซิร์ฟเวอร์ ข้อมูลไม่ออกไปภายนอก ใช้กับเอกสารชั้นความลับได้"}
         </p>
+      )}
+      {browser && (
+        <>
+          <label>
+            URL ของเซิร์ฟเวอร์ AI
+            <input value={choice.baseUrl ?? ""} onChange={(e) => onChange({ ...choice, baseUrl: e.target.value })} placeholder={info?.defaultUrl || "http://192.168.1.10:8000/v1"} inputMode="url" />
+          </label>
+          <div className="actions">
+            <button type="button" className="ghost small" disabled={!url || check.state === "busy"} onClick={test}>
+              {check.state === "busy" ? "กำลังตรวจ…" : "ตรวจการเชื่อมต่อและโหลดรายชื่อโมเดล"}
+            </button>
+          </div>
+          {check.state !== "idle" && check.state !== "busy" && <p className={check.state === "ok" ? "notice ok" : "notice err"} role="status">{check.text}</p>}
+          <details className="setup-guide" open={check.state === "fail"}>
+            <summary>วิธีตั้งค่า Ollama ให้เว็บนี้เรียกได้</summary>
+            <ol>
+              <li>ติดตั้ง Ollama แล้วดาวน์โหลดโมเดล เช่น <code>ollama pull qwen3.5:9b</code></li>
+              <li>ถ้าเปิดเว็บนี้จากโดเมนอื่นที่ไม่ใช่ localhost ให้ตั้งตัวแปรสภาพแวดล้อม <code>OLLAMA_ORIGINS={origin || "https://โดเมนของเว็บนี้"}</code> แล้วเริ่ม Ollama ใหม่</li>
+              <li>ถ้าเบราว์เซอร์ถามขอเข้าถึง "อุปกรณ์ในเครือข่ายภายใน" ให้กดอนุญาต</li>
+              <li>โมเดลที่ใหญ่กินหน่วยความจำมาก — ปิดโปรแกรมอื่นก่อนใช้ ถ้าเครื่องช้าหรือค้างให้เลือกโมเดลที่เล็กลง</li>
+            </ol>
+          </details>
+        </>
       )}
       <label>
         โมเดล{info?.needsModel ? "" : " (ไม่บังคับ)"}
-        <input value={choice.model ?? ""} onChange={(e) => onChange({ ...choice, model: e.target.value })} placeholder={info?.defaultModel ?? (choice.provider === "ollama" ? "เช่น qwen3.5:9b" : "ชื่อโมเดล")} />
+        <input
+          value={choice.model ?? ""}
+          list={check.models.length ? "thdocs-models" : undefined}
+          onChange={(e) => onChange({ ...choice, model: e.target.value })}
+          placeholder={info?.defaultModel ?? (choice.provider.includes("ollama") ? "เช่น qwen3.5:9b" : "ชื่อโมเดล")}
+        />
+        <datalist id="thdocs-models">{check.models.map((m) => <option key={m} value={m} />)}</datalist>
       </label>
       {info?.needsUrl && (
         <label>Base URL<input value={choice.baseUrl ?? ""} onChange={(e) => onChange({ ...choice, baseUrl: e.target.value })} placeholder="https://.../v1" /></label>
       )}
-      {(info?.needsKey || info?.needsUrl) && (
+      {(info?.needsKey || info?.needsUrl || (browser && external)) && (
         <>
           <label>
-            API key
+            API key{browser ? " (ถ้าเซิร์ฟเวอร์ต้องใช้)" : ""}
             <input type="password" autoComplete="off" value={choice.apiKey ?? ""} onChange={(e) => onChange({ ...choice, apiKey: e.target.value })} />
           </label>
           <label className="check">
             <input type="checkbox" checked={remember} onChange={(e) => onRemember(e.target.checked)} />
             จำ API key ไว้ในเบราว์เซอร์เครื่องนี้
           </label>
-          <p className="hint">key ส่งไปกับคำขอแต่ละครั้งเพื่อเรียก AI เท่านั้น เซิร์ฟเวอร์ไม่เก็บ</p>
+          <p className="hint">{browser ? "key ส่งตรงไปยังเซิร์ฟเวอร์ AI ที่คุณระบุ ไม่ผ่านเซิร์ฟเวอร์ THdocs" : "key ส่งไปกับคำขอแต่ละครั้งเพื่อเรียก AI เท่านั้น เซิร์ฟเวอร์ไม่เก็บ"}</p>
         </>
       )}
     </div>

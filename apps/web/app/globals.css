@@ -209,3 +209,9 @@ label.check.small input { width: auto; }
 .tab.install { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 600; }
 /* ติดตั้งเป็นแอปแล้ว (หน้าต่างของตัวเอง): ไม่มีแถบเบราว์เซอร์ ใช้พื้นที่เต็ม */
 @media (display-mode: standalone) { .topbar { padding-top: max(10px, env(safe-area-inset-top)); } }
+
+/* คู่มือตั้งค่า AI ในเครื่อง */
+.setup-guide { border: 1px solid var(--line); border-radius: 8px; padding: 6px 10px; font-size: 13px; }
+.setup-guide summary { cursor: pointer; font-weight: 600; }
+.setup-guide ol { margin: 6px 0 2px; padding-left: 1.3em; display: flex; flex-direction: column; gap: 4px; }
+.setup-guide code { background: var(--bg); padding: 0 4px; border-radius: 4px; word-break: break-all; }

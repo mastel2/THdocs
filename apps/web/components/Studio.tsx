@@ -15,10 +15,11 @@ import {
 } from "@thdocs/core";
 import { PAGE_CSS, renderHtml } from "@thdocs/render-html";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { aiDraft, aiFacts, aiRevise, isExternal } from "../lib/ai";
 import { api, download, load, save } from "../lib/client";
 import { blobToBase64, insertDocx, officeReady, selectedText } from "../lib/office";
 import { useInstall, useServiceWorker } from "./PwaRegister";
-import { PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
+import { BROWSER_PROVIDERS, PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
 import { Preview } from "./Preview";
 import { SchemaForm } from "./SchemaForm";
 import { LLMSettings, ProfileSettings } from "./Settings";
@@ -106,7 +107,10 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   }, [busy]);
 
   const def = findType(typeId)!;
-  const provider = providers.find((p) => p.id === llm.provider);
+  const allProviders = useMemo(() => [...providers, ...BROWSER_PROVIDERS], [providers]);
+  const found = allProviders.find((p) => p.id === llm.provider);
+  // ผู้ให้บริการที่ผู้ใช้ระบุ URL เอง: ออกนอกเครื่องหรือไม่ ขึ้นกับ URL
+  const provider = found && { ...found, external: found.browserSide ? isExternal(found, llm) : found.external };
   const options = { ...(speed ? { speed } : {}), ...(secrecy ? { secrecy } : {}) };
 
   // ประกอบเอกสาร ตรวจ และสร้างพรีวิวในเบราว์เซอร์ทันทีทุกครั้งที่แก้
@@ -167,7 +171,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   async function analyze() {
     if (needsSetup) return setPanel("llm");
     const r = await run("กำลังอ่านคำขอ", (signal) =>
-      api<{ facts: Facts; missing: string[]; masked: string }>("/api/facts", { type: typeId, request, profile, options, known: {}, llm }, signal),
+      aiFacts({ type: typeId, request, profile, options, llm }, signal),
     );
     if (!r) return;
     setFacts(r.facts);
@@ -178,7 +182,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
 
   async function makeDraft() {
     const r = await run(`กำลังร่าง${def.name}`, (signal) =>
-      api<{ file: DraftFile; masked: string }>("/api/draft", { type: typeId, request, facts, profile, options, llm }, signal),
+      aiDraft({ type: typeId, request, facts, profile, options, llm }, signal),
     );
     if (!r) return;
     setFile(r.file);
@@ -189,7 +193,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   async function reviseDraft() {
     if (!file || !instruction.trim()) return;
     const r = await run("กำลังแก้ไข", (signal) =>
-      api<{ file: DraftFile; masked: string }>("/api/revise", { file, instruction, profile, llm }, signal),
+      aiRevise({ file, instruction, profile, llm }, signal),
     );
     if (!r) return;
     setFile(r.file);
@@ -281,7 +285,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
           {panel === "llm" && (
             <div className="card">
               <h2>ตั้งค่า AI</h2>
-              <LLMSettings providers={providers} choice={llm} onChange={setLlm} remember={remember} onRemember={setRemember} />
+              <LLMSettings providers={allProviders} choice={llm} onChange={setLlm} remember={remember} onRemember={setRemember} />
               <button className="primary" onClick={() => setPanel(null)}>เสร็จ</button>
             </div>
           )}

@@ -1,10 +1,10 @@
 import type { LLM, LLMRequest } from "@thdocs/core";
 import { AnthropicLLM } from "./anthropic";
 import { LLMError } from "./errors";
-import { OpenAICompatLLM } from "./openai-compat";
+import { OpenAICompatLLM, isLocalUrl } from "./openai-compat";
 
 export { AnthropicLLM, LLMError, OpenAICompatLLM };
-export { parseJson } from "./openai-compat";
+export { isLocalUrl, listModels, parseJson } from "./openai-compat";
 
 /** ผู้ให้บริการที่รู้จัก — ตัวที่เป็น OpenAI-compatible ใช้ OpenAICompatLLM */
 const PRESETS = {
@@ -35,7 +35,7 @@ export function createLLM(cfg: ProviderConfig, env: Record<string, string | unde
     const baseUrl = cfg.baseUrl || env.THDOCS_LLM_BASE_URL;
     if (!baseUrl) throw new LLMError("custom ต้องระบุ --base-url หรือ THDOCS_LLM_BASE_URL");
     const apiKey = cfg.apiKey || env.THDOCS_LLM_API_KEY;
-    return new OpenAICompatLLM({ id: "custom", baseUrl, model, ...(apiKey ? { apiKey } : {}), external: cfg.external ?? !isLocal(baseUrl) });
+    return new OpenAICompatLLM({ id: "custom", baseUrl, model, ...(apiKey ? { apiKey } : {}), external: cfg.external ?? !isLocalUrl(baseUrl) });
   }
   const preset = PRESETS[cfg.provider as keyof typeof PRESETS];
   if (!preset) throw new LLMError(`ไม่รู้จักผู้ให้บริการ '${cfg.provider}' (${PROVIDERS.join(" | ")})`);
@@ -48,15 +48,6 @@ export function createLLM(cfg: ProviderConfig, env: Record<string, string | unde
     ...(apiKey ? { apiKey } : {}),
     external: preset.external,
   });
-}
-
-function isLocal(url: string): boolean {
-  try {
-    const h = new URL(url).hostname;
-    return h === "localhost" || h === "127.0.0.1" || h === "::1" || /^(10|192\.168|172\.(1[6-9]|2\d|3[01]))\./.test(h);
-  } catch {
-    return false;
-  }
 }
 
 /** สำหรับทดสอบ: คืนคำตอบที่กำหนดไว้ตามลำดับ และเก็บคำขอทุกครั้ง */

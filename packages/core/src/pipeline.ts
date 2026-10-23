@@ -14,6 +14,8 @@ export interface LLMRequest {
   /** JSON Schema (ได้จาก toLLMSchema) */
   schema: Record<string, unknown>;
   schemaName: string;
+  /** ยกเลิกคำขอที่ค้างอยู่ (ปุ่ม "ยกเลิก" บนเว็บ) */
+  signal?: AbortSignal;
 }
 
 export interface LLM {
