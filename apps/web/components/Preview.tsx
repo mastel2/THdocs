@@ -3,8 +3,8 @@ import { useEffect, useRef, useState } from "react";
 
 const PAGE_PX = (21 / 2.54) * 96;
 
-/** แสดงหน้า A4 ย่อให้พอดีความกว้างคอลัมน์ */
-export function Preview({ html }: { html: string | null }) {
+/** แสดงหน้า A4 ย่อให้พอดีความกว้างคอลัมน์ — badge = ป้ายบอกว่าเป็นตัวอย่าง ไม่ใช่เอกสารของผู้ใช้ */
+export function Preview({ html, badge }: { html: string | null; badge?: string }) {
   const box = useRef<HTMLDivElement>(null);
   const [zoom, setZoom] = useState(1);
 
@@ -17,13 +17,13 @@ export function Preview({ html }: { html: string | null }) {
   }, []);
 
   return (
-    <div className="preview" ref={box}>
+    <div className={badge ? "preview is-example" : "preview"} ref={box}>
+      {badge && <div className="example-badge">{badge}</div>}
       {html ? (
         <div className="preview-zoom" style={{ zoom }} dangerouslySetInnerHTML={{ __html: html }} />
       ) : (
         <div className="preview-empty">
           <p>ตัวอย่างเอกสารจะแสดงที่นี่</p>
-          <p className="hint">เลือกชนิดเอกสาร แล้วบอกสิ่งที่ต้องการ</p>
         </div>
       )}
     </div>

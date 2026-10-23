@@ -58,6 +58,15 @@ export interface Finding {
 
 export type Rule<D> = (doc: D, ctx: Context) => Finding[];
 
+/** ตัวอย่างประจำชนิดเอกสาร — ให้ผู้ใช้เห็นภาพก่อนเริ่ม และใช้เป็นข้อมูลทดสอบผังหน้า */
+export interface DocExample<W> {
+  /** คำขอตัวอย่างแบบที่ผู้ใช้ควรพิมพ์ */
+  request: string;
+  facts: Facts;
+  wording: W;
+  options?: Pick<DraftOptions, "speed" | "secrecy">;
+}
+
 /**
  * นิยามชนิดเอกสารหนึ่งชนิด
  *   W = ถ้อยคำที่ AI เขียน (ตรวจด้วย wordingSchema)
@@ -76,6 +85,7 @@ export interface DocTypeDef<W = unknown, D = unknown> {
   assemble(wording: W, facts: Facts, ctx: Context): D;
   rules: Rule<D>[];
   layout(doc: D, ctx: Context): DocIR;
+  example?: DocExample<W>;
 }
 
 /** ชุดแม่แบบ เช่น หนังสือราชการ, ISO */
@@ -83,4 +93,6 @@ export interface TemplatePack {
   id: string;
   name: string;
   types: DocTypeDef<any, any>[];
+  /** ข้อมูลหน่วยงานสมมติ ใช้กับตัวอย่างเมื่อผู้ใช้ยังไม่ได้กรอกของตัวเอง */
+  demoProfile?: OrgProfile;
 }

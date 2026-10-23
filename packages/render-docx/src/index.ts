@@ -17,7 +17,7 @@ import {
   TextWrappingType,
   VerticalPositionRelativeFrom,
 } from "docx";
-import { PLACEHOLDER_RE, thaiWordBreaks, toThaiDigits, type Align, type Block, type DocIR, type Emblem, type Para, type Run } from "@thdocs/core";
+import { PLACEHOLDER_RE, keepNumberUnits, thaiWordBreaks, toThaiDigits, type Align, type Block, type DocIR, type Emblem, type Para, type Run } from "@thdocs/core";
 import { placeholderPng, pngSize } from "./png";
 
 export interface RenderOptions {
@@ -65,7 +65,7 @@ class Renderer {
   }
 
   private text(t: string) {
-    return this.ir.page.thaiDigits ? toThaiDigits(t) : t;
+    return keepNumberUnits(this.ir.page.thaiDigits ? toThaiDigits(t) : t);
   }
 
   private runs(run: Run): TextRun[] {

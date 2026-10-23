@@ -3,6 +3,7 @@ import {
   assembleDraft,
   check,
   contextFromDraft,
+  exampleDraft,
   summarize,
   toLLMSchema,
   type DraftFile,
@@ -15,7 +16,7 @@ import {
 import { PAGE_CSS, renderHtml } from "@thdocs/render-html";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, download, load, save } from "../lib/client";
-import { TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
+import { PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
 import { Preview } from "./Preview";
 import { SchemaForm } from "./SchemaForm";
 import { LLMSettings, ProfileSettings } from "./Settings";
@@ -108,6 +109,24 @@ export function Studio() {
       return { html: null, result: null, problem: (e as Error).message };
     }
   }, [file, profile, emblem]);
+
+  // ยังไม่มีร่าง: แสดงตัวอย่างของชนิดที่เลือก ให้เห็นภาพก่อนเริ่ม (ใช้ข้อมูลหน่วยงานของผู้ใช้ถ้ากรอกแล้ว)
+  const exampleHtml = useMemo(() => {
+    const ex = exampleDraft(def);
+    if (!ex) return null;
+    const ctx = contextFromDraft(ex, profile.orgName ? profile : (PACKS.find((p) => p.types.includes(def))?.demoProfile ?? profile));
+    return renderHtml(def.layout(assembleDraft(def, ex, ctx), ctx), { fallbackFonts: PREVIEW_FONTS, ...(emblem ? { emblemSrc: emblem } : {}) });
+  }, [def, profile, emblem]);
+
+  function startFromExample() {
+    const ex = exampleDraft(def);
+    if (!ex) return;
+    const { docNo: _demoNo, ...facts } = ex.facts; // เลขที่ของตัวอย่างเป็นของสมมติ
+    setFile({ ...ex, facts });
+    setFacts(facts);
+    setRequest(def.example!.request);
+    setStep("edit");
+  }
 
   const wordingSchema = useMemo(() => (file ? toLLMSchema(findType(file.type)!.wordingSchema) : null), [file?.type]);
 
@@ -258,9 +277,19 @@ export function Studio() {
                       rows={5}
                       value={request}
                       onChange={(e) => setRequest(e.target.value)}
-                      placeholder="เช่น ขออนุมัติจัดอบรมการใช้ระบบสารบรรณอิเล็กทรอนิกส์ ให้เจ้าหน้าที่ 30 คน วันที่ 20 พ.ย. 2569 ที่ห้องประชุม 2 งบประมาณ 12,000 บาท เสนอผู้อำนวยการ"
+                      placeholder="บอกเรื่องที่ต้องการ: ถึงใคร ต้องการอะไร วัน เวลา สถานที่ จำนวน งบประมาณ"
                     />
                   </label>
+                  {def.example && (
+                    <div className="example-req">
+                      <span className="hint">ตัวอย่างคำขอสำหรับ{def.name}</span>
+                      <p>{def.example.request}</p>
+                      <div className="actions">
+                        <button type="button" className="ghost small" onClick={() => setRequest(def.example!.request)}>ใช้ข้อความนี้</button>
+                        <button type="button" className="ghost small" onClick={startFromExample}>เปิดตัวอย่างนี้แก้ต่อ (ไม่ต้องใช้ AI)</button>
+                      </div>
+                    </div>
+                  )}
                   <div className="row">
                     <label>
                       ชั้นความเร็ว
@@ -311,6 +340,12 @@ export function Studio() {
 
               {step === "edit" && file && (
                 <>
+                  {!profile.orgName && (
+                    <p className="notice warn">
+                      ช่อง [ระบุ] ที่ไฮไลต์ส่วนใหญ่จะหายเมื่อกรอกข้อมูลหน่วยงานและผู้ลงนาม{" "}
+                      <button className="link" onClick={() => setPanel("profile")}>กรอกตอนนี้</button>
+                    </p>
+                  )}
                   <div className="card">
                     <h2>ผลตรวจตามระเบียบ</h2>
                     {view?.problem && <p className="notice err">{view.problem}</p>}
@@ -355,7 +390,11 @@ export function Studio() {
               <button className="ghost" onClick={reset}>เริ่มใหม่</button>
             </div>
           )}
-          <Preview html={view?.html ?? null} />
+          {file ? (
+            <Preview html={view?.html ?? null} />
+          ) : (
+            <Preview html={exampleHtml} badge={`ตัวอย่าง${def.name} — เอกสารของคุณจะจัดรูปแบบแบบนี้`} />
+          )}
           {file && <p className="hint center">ตัวอย่างบนจอ — การแบ่งหน้าจริงดูจากไฟล์ .docx · ระบบสร้าง <b>ร่าง</b> ผู้มีอำนาจต้องตรวจก่อนลงนาม</p>}
         </section>
       </main>

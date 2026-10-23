@@ -61,6 +61,12 @@ describe("เลือกผู้ให้บริการ", () => {
 });
 
 describe("ภาษาไทย", () => {
+  it("ตัวเลขกับหน่วยไม่แยกบรรทัด แต่ไม่แตะคำที่ขึ้นต้นเหมือนหน่วย", async () => {
+    const { keepNumberUnits } = await import("@thdocs/core");
+    expect(keepNumberUnits("จำนวน ๕๐ คน งบ 12,000 บาท")).toBe("จำนวน ๕๐ คน งบ 12,000 บาท");
+    expect(keepNumberUnits("ปี 2569 คนละ")).toBe("ปี 2569 คนละ");
+  });
+
   it("เลขไทยไม่แตะอีเมลและ URL", () => {
     expect(toThaiDigits("50 คน a1@x.go.th https://x.th/2569")).toBe("๕๐ คน a1@x.go.th https://x.th/2569");
     expect(thaiDate(new Date(2026, 9, 3), true)).toBe("๓ ตุลาคม พ.ศ. ๒๕๖๙");

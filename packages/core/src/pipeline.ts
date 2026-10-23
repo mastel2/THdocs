@@ -5,7 +5,7 @@
  * การสั่งแก้จึงแก้ได้เฉพาะถ้อยคำ — ชั้นความลับ เลขที่ วันที่ ผู้ลงนาม ไม่หลุดหายเพราะ AI
  */
 import { z } from "zod";
-import type { Context, DocTypeDef, DraftOptions, FactSpec, Facts } from "./doctype";
+import type { Context, DocTypeDef, DraftOptions, FactSpec, Facts, OrgProfile } from "./doctype";
 
 export interface LLMRequest {
   system: string;
@@ -127,6 +127,13 @@ export function toDraftFile(def: DocTypeDef, facts: Facts, wording: unknown, ctx
   return { thdocs: 1, type: def.id, facts, wording, options: { ...rest, ...(date ? { date: date.toISOString() } : {}) } };
 }
 
+/** ตัวอย่างของชนิดเอกสาร → ไฟล์ร่าง (ไม่เรียก AI) */
+export function exampleDraft(def: DocTypeDef, date?: Date): DraftFile | null {
+  const ex = def.example;
+  if (!ex) return null;
+  return { thdocs: 1, type: def.id, facts: { ...ex.facts }, wording: structuredClone(ex.wording), options: { ...ex.options, ...(date ? { date: date.toISOString() } : {}) } };
+}
+
 /** ไฟล์ร่าง → เอกสารฉบับเต็ม (ตรวจ wording ด้วย schema ทุกครั้ง เพราะผู้ใช้แก้ไฟล์เองได้) */
 export function assembleDraft<W, D>(def: DocTypeDef<W, D>, file: DraftFile, ctx: Context): D {
   const r = def.wordingSchema.safeParse(file.wording);
@@ -134,7 +141,19 @@ export function assembleDraft<W, D>(def: DocTypeDef<W, D>, file: DraftFile, ctx:
   return def.assemble(r.data, file.facts, ctx);
 }
 
-export function contextFromDraft(file: DraftFile, profile: Context["profile"]): Context {
+/** ข้อมูลหน่วยงานที่ยังไม่กรอก → ช่อง [ระบุ] (ใช้ทั้งฝั่งเบราว์เซอร์และเซิร์ฟเวอร์ ให้ผลตรงกัน) */
+export function normalizeProfile(p: Partial<OrgProfile>): OrgProfile {
+  const t = (s: string | undefined) => s?.trim() ?? "";
+  return {
+    ...p,
+    orgName: t(p.orgName) || "[ระบุ: ชื่อหน่วยงาน]",
+    unit: t(p.unit) || "[ระบุ: ส่วนงานเจ้าของเรื่อง]",
+    address: (p.address ?? []).map((a) => a.trim()).filter(Boolean),
+    ...(p.signer && t(p.signer.name) ? { signer: { name: t(p.signer.name), position: p.signer.position.map((x) => x.trim()).filter(Boolean) } } : { signer: undefined }),
+  };
+}
+
+export function contextFromDraft(file: DraftFile, profile: Partial<OrgProfile>): Context {
   const { date, ...rest } = file.options;
-  return { profile, options: { ...rest, ...(date ? { date: new Date(date) } : {}) } };
+  return { profile: normalizeProfile(profile), options: { ...rest, ...(date ? { date: new Date(date) } : {}) } };
 }

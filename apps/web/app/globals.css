@@ -129,6 +129,16 @@ label.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 .emblem-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .emblem-row img, .emblem-empty { width: 48px; height: 52px; object-fit: contain; border: 1px dashed var(--line); border-radius: 6px; display: block; }
 
+.example-req { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
+.example-req p { margin: 0; font-size: 14px; }
+
+.preview.is-example { position: relative; flex-direction: column; align-items: center; gap: 10px; }
+.example-badge {
+  position: sticky; top: 64px; z-index: 2; align-self: center;
+  background: var(--accent); color: var(--accent-ink); font-size: 13px; font-weight: 600;
+  padding: 4px 14px; border-radius: 999px; box-shadow: var(--shadow);
+}
+
 .toolbar { display: flex; gap: 8px; flex-wrap: wrap; }
 .preview { background: #e5e7eb; border-radius: 12px; padding: 16px 4px; display: flex; justify-content: center; overflow: hidden; }
 @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .preview { background: #262b35; } }
@@ -138,4 +148,5 @@ label.file input { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
 @media print {
   .preview-zoom { zoom: 1 !important; }
   .preview { padding: 0; background: none; }
+  .example-badge { display: none; }
 }

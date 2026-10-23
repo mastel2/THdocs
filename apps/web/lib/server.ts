@@ -4,7 +4,7 @@
  *   - ยิงไป URL ที่ผู้ใช้กำหนดเอง (SSRF) เว้นแต่ THDOCS_ALLOW_CUSTOM_URL=1
  *   - อ่านไฟล์บนเซิร์ฟเวอร์ตาม path ที่ผู้ใช้ส่งมา (ตราส่งมาเป็น data URL เท่านั้น)
  */
-import { ConfidentialError, type DraftFile, type LLM, type OrgProfile } from "@thdocs/core";
+import { ConfidentialError, normalizeProfile, type DraftFile, type LLM, type OrgProfile } from "@thdocs/core";
 import { LLMError, createLLM } from "@thdocs/llm";
 import { z } from "zod";
 import { findType, type LLMChoice, type ProviderInfo } from "./registry";
@@ -74,8 +74,7 @@ export const ProfileSchema = z.object({
 }); // ไม่มี emblemPng: ห้ามรับ path จากผู้ใช้
 
 export function profileFrom(raw: unknown): OrgProfile {
-  const p = ProfileSchema.parse(raw ?? {});
-  return { ...p, orgName: p.orgName || "[ระบุ: ชื่อหน่วยงาน]", unit: p.unit || "[ระบุ: ส่วนงานเจ้าของเรื่อง]" };
+  return normalizeProfile(ProfileSchema.parse(raw ?? {}));
 }
 
 export const OptionsSchema = z.object({

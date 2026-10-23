@@ -60,6 +60,14 @@ export function thaiWordBreaks(text: string): string {
   return out;
 }
 
+const UNITS = "คน|ราย|บาท|ล้านบาท|เครื่อง|ฉบับ|ชุด|เล่ม|แผ่น|วัน|เดือน|ปี|ครั้ง|ชั่วโมง|นาที|แห่ง|หน่วย|รายการ|โครงการ|หลัง|คัน|ตัว|อัน|ห้อง|ที่|ชิ้น|กล่อง|รุ่น|น\\.";
+const NUM_UNIT = new RegExp(`([0-9๐-๙][0-9๐-๙,.]*) (${UNITS})(?![ก-๙])`, "g");
+
+/** ตัวเลขกับหน่วยห้ามแยกคนละบรรทัด ("๕๐ คน", "๑๒,๐๐๐ บาท") — ใช้ช่องว่างแบบไม่ตัดบรรทัด */
+export function keepNumberUnits(text: string): string {
+  return text.replace(NUM_UNIT, "$1 $2");
+}
+
 /** ช่องที่ระบบไม่เดา: [ระบุ] หรือ [ระบุ: ชื่อผู้ลงนาม] */
 export const PLACEHOLDER_RE = /\[ระบุ[^\]]*\]/g;
 export const placeholder = (what?: string) => (what ? `[ระบุ: ${what}]` : "[ระบุ]");

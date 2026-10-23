@@ -2,7 +2,7 @@
  * Document IR → HTML สำหรับพรีวิวและพิมพ์เป็น PDF จากเบราว์เซอร์
  * ใช้หน่วย cm/pt ตรงกับ .docx; การแบ่งหน้าจริงให้ดูจากไฟล์ .docx
  */
-import { PLACEHOLDER_RE, toThaiDigits, type Align, type Block, type DocIR, type Para, type Run } from "@thdocs/core";
+import { PLACEHOLDER_RE, keepNumberUnits, toThaiDigits, type Align, type Block, type DocIR, type Para, type Run } from "@thdocs/core";
 
 export interface HtmlOptions {
   /** data URL ของตรา — ไม่มี = กรอบแทนตรา */
@@ -18,7 +18,8 @@ const ALIGN: Record<Align, string> = {
   center: "center",
   right: "right",
   justify: "justify",
-  thaiDistribute: "justify",
+  // เบราว์เซอร์จัดเต็มบรรทัดด้วยการยืดช่องว่างเท่านั้น (ไม่กระจายตัวอักษรแบบ Word) ช่องว่างจึงห่างผิดตา — พรีวิวใช้ชิดซ้าย
+  thaiDistribute: "left",
 };
 
 export const PAGE_CSS = `
@@ -44,7 +45,7 @@ class Html {
   constructor(private readonly ir: DocIR, private readonly opts: HtmlOptions) {}
 
   private text(t: string) {
-    return this.ir.page.thaiDigits ? toThaiDigits(t) : t;
+    return keepNumberUnits(this.ir.page.thaiDigits ? toThaiDigits(t) : t);
   }
 
   private run(r: Run): string {
