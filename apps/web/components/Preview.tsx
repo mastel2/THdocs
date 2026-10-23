@@ -14,13 +14,18 @@ interface Props {
   /** เปิด/ปิดเส้นระยะขอบ — ผู้เรียกสร้าง html ใหม่ตามค่านี้ */
   guides?: boolean;
   onGuides?: (v: boolean) => void;
+  /** เปลี่ยนค่านี้เมื่อเป็น "เอกสารอื่น" (เปลี่ยนชนิด/เปิดร่างใหม่) → เลื่อนกลับบนสุด; แก้ข้อความในเอกสารเดิมไม่รีเซ็ต */
+  resetKey?: string;
 }
 
 /**
  * แสดงหน้า A4 ย่อตามพื้นที่: พอดีความกว้าง (อ่านง่าย เลื่อนดูทั้งเอกสาร) หรือทั้งหน้า (เห็นผังทั้งหน้าในจอเดียว)
  * กรอบพรีวิวเลื่อนในตัวเอง — เอกสารยาวกี่หน้าก็ไม่ถูกตัด
  */
-export function Preview({ html, badge, guides, onGuides }: Props) {
+/** ขยายสูงสุดบนจอกว้างพิเศษ — เกินนี้ตัวอักษรใหญ่จนผังหน้าไม่ตรงกับของจริง */
+const MAX_ZOOM = 1.25;
+
+export function Preview({ html, badge, guides, onGuides, resetKey }: Props) {
   const box = useRef<HTMLDivElement>(null);
   const [size, setSize] = useState({ w: PAGE_W, h: PAGE_H });
   const [fit, setFit] = useState<Fit>("width");
@@ -43,7 +48,11 @@ export function Preview({ html, badge, guides, onGuides }: Props) {
   // "ทั้งเอกสาร": ย่อให้เห็นทั้งเอกสารในกรอบเดียว (วัดความสูงจริง ไม่ใช่แค่ A4 หน้าเดียว)
   // ใช้ได้เมื่อกรอบมีความสูงแน่นอน (จอกว้าง) — จอแคบกรอบสูงตามเนื้อหา จึงพอดีความกว้างเสมอ
   const byPage = size.h > 200 ? Math.min(byWidth, (size.h - 40) / natural.h) : byWidth;
-  const zoom = Math.max(0.2, Math.min(1, fit === "page" ? byPage : byWidth));
+  const zoom = Math.max(0.2, Math.min(MAX_ZOOM, fit === "page" ? byPage : byWidth));
+
+  useEffect(() => {
+    box.current?.scrollTo({ top: 0, left: 0 });
+  }, [resetKey]);
 
   useEffect(() => {
     const page = inner.current?.querySelector<HTMLElement>(".thd-page");

@@ -211,6 +211,19 @@ describe("จำกัดอัตรา", () => {
   });
 });
 
+describe("ห้ามแคชผลลัพธ์ของ API", () => {
+  it("ทุก route ตอบ Cache-Control: no-store ทั้งสำเร็จและผิดพลาด (ผลลัพธ์คือเนื้อหาเอกสาร)", async () => {
+    const r = await load({ NODE_ENV: "production" });
+    const responses = [
+      r.config.GET(),
+      await r.docx.POST(post({ file: SAMPLES.memo, profile: PROFILE })), // สำเร็จ
+      await r.docx.POST(post("{ ไม่ใช่ json")), // ผิดพลาด
+      await r.facts.POST(post({ type: "memo", request: "x", options: {}, llm: { provider: "custom" } })), // ถูกปฏิเสธ
+    ];
+    for (const res of responses) expect(res.headers.get("cache-control")).toBe("no-store");
+  });
+});
+
 describe("ค่า env ว่าง (เช่น THDOCS_RATE_LIMIT= ในไฟล์ .env)", () => {
   it("ใช้ค่าตั้งต้น ไม่ใช่ 0 ที่จะปฏิเสธทุกคำขอ", async () => {
     const r = await load({ NODE_ENV: "production", THDOCS_RATE_LIMIT: "" });

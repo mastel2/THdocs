@@ -145,7 +145,10 @@ export function rateLimit(req: Request) {
 export function handle(fn: (req: Request) => Promise<Response>) {
   return async (req: Request) => {
     try {
-      return await fn(req);
+      const res = await fn(req);
+      // ผลลัพธ์มีเนื้อหาเอกสาร — ห้ามเบราว์เซอร์/พร็อกซีเก็บแคช
+      res.headers.set("Cache-Control", "no-store");
+      return res;
     } catch (e) {
       const [status, detail] =
         e instanceof HttpError ? [e.status, e.message]
@@ -154,7 +157,7 @@ export function handle(fn: (req: Request) => Promise<Response>) {
         : e instanceof z.ZodError ? [400, `ข้อมูลไม่ถูกต้อง: ${z.prettifyError(e)}`]
         : [500, "เกิดข้อผิดพลาดภายใน"];
       if (status === 500) console.error(e);
-      return Response.json({ detail }, { status });
+      return Response.json({ detail }, { status, headers: { "Cache-Control": "no-store" } });
     }
   };
 }

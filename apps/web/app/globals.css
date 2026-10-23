@@ -59,7 +59,7 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .tab { border: 1px solid var(--line); background: transparent; border-radius: 999px; padding: 4px 14px; cursor: pointer; }
 .tab.on { border-color: var(--accent); color: var(--accent); }
 
-.layout { display: grid; grid-template-columns: minmax(340px, 440px) 1fr; gap: 20px; padding: 20px; max-width: 1500px; margin: 0 auto; }
+.layout { display: grid; grid-template-columns: minmax(340px, 440px) 1fr; gap: 20px; padding: 20px; max-width: 1900px; margin: 0 auto; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; padding: 12px 16px; } }
 
 /* แผงข้างใน Word กว้างราว 320–450px: คอลัมน์เดียวเสมอ หัวกระชับ */
@@ -169,7 +169,8 @@ button.icon.danger { color: var(--err); }
 .example-req { border: 1px dashed var(--line); border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 6px; }
 .example-req p { margin: 0; font-size: 14px; }
 
-.preview.is-example { position: relative; flex-direction: column; align-items: center; gap: 10px; }
+/* flex แนวตั้ง: ต้อง flex-start — ถ้า center เมื่อเอกสารสูงกว่ากรอบจะล้นขึ้นด้านบนจนเลื่อนไปดูไม่ได้ (ส่วนหัวเอกสารหาย) */
+.preview.is-example { position: relative; flex-direction: column; align-items: center; justify-content: flex-start; gap: 10px; }
 .example-badge {
   /* อยู่เหนือหน้ากระดาษ ไม่ลอยทับ — หัวกระดาษ ISO อยู่บนสุดของหน้าจะถูกบัง */
   align-self: center; text-align: center;
@@ -204,3 +205,7 @@ label.check.small input { width: auto; }
 .margin-grid label { display: flex; flex-direction: column; gap: 4px; font-weight: 600; font-size: 13px; }
 .margin-grid .unit { display: flex; align-items: center; gap: 4px; font-weight: 400; }
 .margin-grid input { width: 5.5em; }
+
+.tab.install { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 600; }
+/* ติดตั้งเป็นแอปแล้ว (หน้าต่างของตัวเอง): ไม่มีแถบเบราว์เซอร์ ใช้พื้นที่เต็ม */
+@media (display-mode: standalone) { .topbar { padding-top: max(10px, env(safe-area-inset-top)); } }

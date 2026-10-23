@@ -17,6 +17,7 @@ import { PAGE_CSS, renderHtml } from "@thdocs/render-html";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, download, load, save } from "../lib/client";
 import { blobToBase64, insertDocx, officeReady, selectedText } from "../lib/office";
+import { useInstall, useServiceWorker } from "./PwaRegister";
 import { PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
 import { Preview } from "./Preview";
 import { SchemaForm } from "./SchemaForm";
@@ -39,6 +40,8 @@ interface Saved {
 export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   const addin = variant === "addin";
   const [inWord, setInWord] = useState(false);
+  useServiceWorker();
+  const install = useInstall();
   const [notice, setNotice] = useState<string | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [profile, setProfile] = useState<OrgProfile>(EMPTY_PROFILE);
@@ -258,6 +261,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
       <header className="topbar">
         <div className="brand">THdocs {!addin && <span>ร่างหนังสือราชการด้วย AI</span>}</div>
         <nav>
+          {install && !addin && <button className="tab install" onClick={install}>ติดตั้งแอป</button>}
           <button className={panel === "profile" ? "tab on" : "tab"} onClick={() => setPanel(panel === "profile" ? null : "profile")}>ข้อมูลหน่วยงาน</button>
           <button className={panel === "llm" ? "tab on" : "tab"} onClick={() => setPanel(panel === "llm" ? null : "llm")}>
             AI: {provider?.name ?? "…"}
@@ -456,9 +460,9 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
           )}
           {notice && <p className="notice ok" role="status">{notice}</p>}
           {file ? (
-            <Preview html={view?.html ?? null} guides={guides} onGuides={setGuides} />
+            <Preview html={view?.html ?? null} guides={guides} onGuides={setGuides} resetKey={`doc:${file?.type}`} />
           ) : (
-            <Preview html={exampleHtml} badge={`ตัวอย่าง${def.name} — เอกสารของคุณจะจัดรูปแบบแบบนี้`} guides={guides} onGuides={setGuides} />
+            <Preview html={exampleHtml} badge={`ตัวอย่าง${def.name} — เอกสารของคุณจะจัดรูปแบบแบบนี้`} guides={guides} onGuides={setGuides} resetKey={`example:${typeId}`} />
           )}
           {file && <p className="hint center">ตัวอย่างบนจอ — การแบ่งหน้าจริงดูจากไฟล์ .docx · ระบบสร้าง <b>ร่าง</b> ผู้มีอำนาจต้องตรวจก่อนลงนาม</p>}
         </section>
