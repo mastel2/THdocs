@@ -153,6 +153,11 @@ npm run build -w @thdocs/web && npm run start -w @thdocs/web   # production
 npm test                 # ไม่ต้องใช้ API key (ใช้ MockLLM)
                          # รวมเทสต์ API ของเว็บ (tests/api.test.ts): สิทธิ์ใช้ key, SSRF, หนังสือลับ, ตรา, ขนาดคำขอ, จำกัดอัตรา, การปิดบังข้อมูล
 npm run typecheck
+
+# ไล่ใช้งานหน้าเว็บทุกปุ่ม/ทุกขั้นในเบราว์เซอร์จริง (Edge) — 91 ข้อ รวมตรวจตำแหน่งบนจอและมือถือ
+cd apps/web && npx next build && npx next start -p 3100   # เทอร์มินัล 1
+node tools/ui-audit/fake-ollama.mjs 11500                  # เทอร์มินัล 2 (AI จำลองแบบ Ollama)
+node tools/ui-audit/ui-audit.mjs http://localhost:3100     # เทอร์มินัล 3
 npm run samples          # สร้าง .docx ตัวอย่างใน out/samples
 THDOCS_FONT_DIR=<โฟลเดอร์ที่มี TH Sarabun> npm run preview   # ต้องเปิด Docker
 ```
