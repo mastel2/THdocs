@@ -476,6 +476,20 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
                           <input value={file.facts[f.key] ?? ""} onChange={(e) => setFile({ ...file, facts: { ...file.facts, [f.key]: e.target.value || null } })} />
                         </label>
                       ))}
+                      <div className="row">
+                        <label>
+                          ชั้นความเร็ว
+                          <select value={file.options.speed ?? ""} onChange={(e) => setFile({ ...file, options: { ...file.options, speed: (e.target.value || undefined) as Speed | undefined } })}>
+                            <option value="">ไม่มี</option><option>ด่วน</option><option>ด่วนมาก</option><option>ด่วนที่สุด</option>
+                          </select>
+                        </label>
+                        <label>
+                          ชั้นความลับ
+                          <select value={file.options.secrecy ?? ""} onChange={(e) => setFile({ ...file, options: { ...file.options, secrecy: (e.target.value || undefined) as Secrecy | undefined } })}>
+                            <option value="">ไม่มี</option><option>ลับ</option><option>ลับมาก</option><option>ลับที่สุด</option>
+                          </select>
+                        </label>
+                      </div>
                     </div>
                   </details>
                 </>

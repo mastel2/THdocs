@@ -632,6 +632,15 @@ try {
     await until(`document.body.textContent.includes('ตั้งค่า AI')`, 3000);
     return true;
   });
+  await check("ขั้นแก้: เปลี่ยนชั้นความเร็วในเอกสารที่ร่างแล้ว → ขึ้นในเอกสารทันที และตั้งชั้นความลับได้", async () => {
+    await go("/");
+    await ev(`T.select(0, 'external_letter'); await new Promise(r => setTimeout(r, 300)); T.click('เปิดตัวอย่างนี้แก้ต่อ'); return 1`);
+    await until(`T.step() === 'ตรวจและแก้'`, 3000);
+    await ev(`T.details('ข้อมูลประกอบ').open = true; return 1`); await sleep(300);
+    await ev(`const d = T.details('ข้อมูลประกอบ'); const s = d.querySelectorAll('select'); T.set(s[0], 'ด่วนที่สุด'); T.set(s[1], 'ลับ'); return 1`); await sleep(500);
+    const t = await ev(`return T.pageText()`);
+    return (t.includes('ด่วนที่สุด') && t.includes('ลับ')) || "ไม่ขึ้นในเอกสาร";
+  });
   await check("แผงปรับข้อความไม่ล้นจอที่ 390px", async () => {
     await go("/", { width: 390, height: 800, storage: AI_FAKE });
     await ev(`T.click('ปรับข้อความ'); return 1`); await sleep(500);
