@@ -16,6 +16,7 @@ import {
 import { PAGE_CSS, renderHtml } from "@thdocs/render-html";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { api, download, load, save } from "../lib/client";
+import { blobToBase64, insertDocx, officeReady, selectedText } from "../lib/office";
 import { PACKS, TYPES, findType, type LLMChoice, type ProviderInfo } from "../lib/registry";
 import { Preview } from "./Preview";
 import { SchemaForm } from "./SchemaForm";
@@ -34,7 +35,11 @@ interface Saved {
   request: string;
 }
 
-export function Studio() {
+/** web = หน้าเว็บเต็ม | addin = แผงข้างใน Word (แทรกลงเอกสารแทนการดาวน์โหลด) */
+export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
+  const addin = variant === "addin";
+  const [inWord, setInWord] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
   const [profile, setProfile] = useState<OrgProfile>(EMPTY_PROFILE);
   const [emblem, setEmblem] = useState<string | null>(null);
@@ -75,6 +80,10 @@ export function Studio() {
     }
     fetch("/api/config").then((r) => r.json()).then((c: { providers: ProviderInfo[] }) => setProviders(c.providers)).catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (addin) officeReady().then(setInWord).catch(() => setInWord(false));
+  }, [addin]);
 
   useEffect(() => save(K.profile, profile), [profile]);
   useEffect(() => save(K.emblem, emblem ?? undefined), [emblem]);
@@ -189,6 +198,23 @@ export function Studio() {
     if (blob) download(blob, `${findType(file.type)!.name}.docx`);
   }
 
+  async function insertIntoWord(where: "replace" | "cursor") {
+    if (!file) return;
+    setNotice(null);
+    const done = await run("กำลังแทรกลงเอกสาร", async (signal) => {
+      const blob = await api<Blob>("/api/docx", { file, profile, ...(emblem ? { emblem } : {}) }, signal);
+      return insertDocx(await blobToBase64(blob), where);
+    });
+    if (done === "full") setNotice("แทรกลงเอกสารแล้ว พร้อมขอบกระดาษ หัวกระดาษ และเลขหน้าตามแบบ");
+    if (done === "body-only") setNotice("แทรกเนื้อหาแล้ว — ขอบกระดาษและหัวกระดาษใช้ของเอกสารเดิม (เลือก 'แทนที่ทั้งเอกสาร' เพื่อได้รูปแบบครบ)");
+  }
+
+  async function useSelection() {
+    const t = await run("กำลังอ่านข้อความที่เลือก", () => selectedText());
+    if (t) setRequest(t);
+    else if (t === "") setError("ยังไม่ได้เลือกข้อความใน Word");
+  }
+
   function saveDraft() {
     if (!file) return;
     download(new Blob([JSON.stringify({ ...file, request }, null, 2)], { type: "application/json" }), `${findType(file.type)!.name}.thdocs.json`);
@@ -223,10 +249,10 @@ export function Studio() {
   const confidentialBlocked = !!secrecy && provider?.external;
 
   return (
-    <div className="app">
+    <div className={addin ? "app is-addin" : "app"}>
       <style>{PAGE_CSS}</style>
       <header className="topbar">
-        <div className="brand">THdocs <span>ร่างหนังสือราชการด้วย AI</span></div>
+        <div className="brand">THdocs {!addin && <span>ร่างหนังสือราชการด้วย AI</span>}</div>
         <nav>
           <button className={panel === "profile" ? "tab on" : "tab"} onClick={() => setPanel(panel === "profile" ? null : "profile")}>ข้อมูลหน่วยงาน</button>
           <button className={panel === "llm" ? "tab on" : "tab"} onClick={() => setPanel(panel === "llm" ? null : "llm")}>
@@ -292,6 +318,11 @@ export function Studio() {
                       placeholder="บอกเรื่องที่ต้องการ: ถึงใคร ต้องการอะไร วัน เวลา สถานที่ จำนวน งบประมาณ"
                     />
                   </label>
+                  {inWord && (
+                    <button type="button" className="ghost small" disabled={!!busy} onClick={useSelection}>
+                      ใช้ข้อความที่เลือกใน Word เป็นคำขอ
+                    </button>
+                  )}
                   {def.example && (
                     <div className="example-req">
                       <span className="hint">ตัวอย่างคำขอสำหรับ{def.name}</span>
@@ -394,7 +425,20 @@ export function Studio() {
         </section>
 
         <section className="main">
-          {file && (
+          {file && addin && (
+            <div className="toolbar">
+              {inWord ? (
+                <>
+                  <button className="primary" disabled={!!busy || !view?.html} onClick={() => insertIntoWord("replace")}>แทนที่ทั้งเอกสาร</button>
+                  <button className="ghost" disabled={!!busy || !view?.html} onClick={() => insertIntoWord("cursor")}>แทรกที่เคอร์เซอร์</button>
+                </>
+              ) : (
+                <p className="notice warn">เปิดหน้านี้จากใน Microsoft Word เพื่อแทรกลงเอกสาร</p>
+              )}
+              <button className="ghost" onClick={reset}>เริ่มใหม่</button>
+            </div>
+          )}
+          {file && !addin && (
             <div className="toolbar">
               <button className="primary" disabled={!!busy || !view?.html} onClick={getDocx}>ดาวน์โหลด .docx</button>
               <button className="ghost" disabled={!view?.html} onClick={() => window.print()}>พิมพ์ / PDF</button>
@@ -402,6 +446,7 @@ export function Studio() {
               <button className="ghost" onClick={reset}>เริ่มใหม่</button>
             </div>
           )}
+          {notice && <p className="notice ok" role="status">{notice}</p>}
           {file ? (
             <Preview html={view?.html ?? null} />
           ) : (

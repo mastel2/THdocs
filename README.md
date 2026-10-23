@@ -42,6 +42,17 @@ npm run build -w @thdocs/web && npm run start -w @thdocs/web   # production
 | `THDOCS_ALLOW_CUSTOM_URL=1` | ปิด | ให้ผู้ใช้ระบุ URL ของ AI เอง (เสี่ยง SSRF — เปิดเฉพาะภายใน) |
 | `THDOCS_RATE_LIMIT` | 60 | จำนวนคำขอที่เรียก AI ต่อ IP ต่อ 10 นาที (นับในหน่วยความจำ — หลายเครื่องต้องย้ายไป Redis) |
 
+### Word add-in
+
+แผงข้างใน Word (เดสก์ท็อปและ Word Online) ใช้หน้า `/addin` ของเว็บเดียวกัน — ร่างแล้วแทรกลงเอกสารได้ 2 แบบ:
+**แทนที่ทั้งเอกสาร** (WordApi 1.5 ขึ้นไป คัดลอกขอบกระดาษ หัว/ท้ายกระดาษ เลขหน้ามาครบ) หรือ **แทรกที่เคอร์เซอร์** (เฉพาะเนื้อหา)
+และใช้ข้อความที่เลือกใน Word เป็นคำขอได้
+
+- manifest: `https://<โดเมน>/addin/manifest.xml` (สร้างตามโดเมนจริง หรือกำหนด `THDOCS_PUBLIC_URL`)
+- Office บังคับ **https** ทุก URL — ทดสอบในเครื่องต้องมีใบรับรองที่เครื่องเชื่อถือ (เช่น `next dev --experimental-https`)
+- ติดตั้งทดสอบ: Word Online → แทรก → Add-ins → อัปโหลด add-in ของฉัน → เลือกไฟล์ manifest
+  หรือ Word เดสก์ท็อปผ่าน Shared Folder Catalog (ศูนย์ความเชื่อถือ → แค็ตตาล็อก Add-in ที่เชื่อถือได้)
+
 | ชนิด | |
 | --- | --- |
 | `external_letter` | หนังสือภายนอก (ข้อ ๑๑) |

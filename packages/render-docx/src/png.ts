@@ -27,17 +27,28 @@ function chunk(type: string, data: Buffer): Buffer {
   return Buffer.concat([len, td, crc]);
 }
 
-/** กรอบเส้นประสีเทาบนพื้นโปร่ง — แสดงตำแหน่งตราเมื่อผู้ใช้ยังไม่ได้ให้ไฟล์ตรา */
-export function placeholderPng(width = 180, height = 200): Buffer {
+/** สร้าง PNG จากฟังก์ชันสีรายพิกเซล (RGBA) — ใช้กับภาพเล็ก ๆ เช่น กรอบแทนตรา ไอคอน */
+export function drawPng(width: number, height: number, pixel: (x: number, y: number) => [number, number, number, number] | null): Buffer {
   const row = width * 4 + 1;
   const raw = Buffer.alloc(row * height);
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const edge = x < 3 || y < 3 || x >= width - 3 || y >= height - 3;
-      const dash = Math.floor((x + y) / 10) % 2 === 0;
-      if (edge && dash) raw.set([150, 150, 150, 255], y * row + 1 + x * 4);
+      const c = pixel(x, y);
+      if (c) raw.set(c, y * row + 1 + x * 4);
     }
   }
+  return encode(width, height, raw);
+}
+
+/** กรอบเส้นประสีเทาบนพื้นโปร่ง — แสดงตำแหน่งตราเมื่อผู้ใช้ยังไม่ได้ให้ไฟล์ตรา */
+export function placeholderPng(width = 180, height = 200): Buffer {
+  return drawPng(width, height, (x, y) => {
+    const edge = x < 3 || y < 3 || x >= width - 3 || y >= height - 3;
+    return edge && Math.floor((x + y) / 10) % 2 === 0 ? [150, 150, 150, 255] : null;
+  });
+}
+
+function encode(width: number, height: number, raw: Buffer): Buffer {
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);

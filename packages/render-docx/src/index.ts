@@ -221,4 +221,4 @@ export async function renderDocx(ir: DocIR, opts: RenderOptions = {}): Promise<B
   return Packer.toBuffer(new Renderer(ir, opts).build());
 }
 
-export { placeholderPng, pngSize } from "./png";
+export { drawPng, placeholderPng, pngSize } from "./png";

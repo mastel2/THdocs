@@ -62,6 +62,13 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .layout { display: grid; grid-template-columns: minmax(340px, 440px) 1fr; gap: 20px; padding: 20px; max-width: 1500px; margin: 0 auto; }
 @media (max-width: 900px) { .layout { grid-template-columns: 1fr; padding: 12px 16px; } }
 
+/* แผงข้างใน Word กว้างราว 320–450px: คอลัมน์เดียวเสมอ หัวกระชับ */
+.is-addin .layout { grid-template-columns: 1fr; padding: 10px; gap: 12px; }
+.is-addin .topbar { padding: 8px 10px; position: static; }
+.is-addin .brand { font-size: 17px; }
+.is-addin .tab { padding: 2px 10px; font-size: 13px; }
+.is-addin .card { padding: 12px; }
+
 .side { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
 .main { min-width: 0; display: flex; flex-direction: column; gap: 10px; }
 
