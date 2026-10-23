@@ -133,6 +133,7 @@ npm run build -w @thdocs/web && npm run start -w @thdocs/web   # production
 
 ```bash
 npm test                 # ไม่ต้องใช้ API key (ใช้ MockLLM)
+                         # รวมเทสต์ API ของเว็บ (tests/api.test.ts): สิทธิ์ใช้ key, SSRF, หนังสือลับ, ตรา, ขนาดคำขอ, จำกัดอัตรา, การปิดบังข้อมูล
 npm run typecheck
 npm run samples          # สร้าง .docx ตัวอย่างใน out/samples
 THDOCS_FONT_DIR=<โฟลเดอร์ที่มี TH Sarabun> npm run preview   # ต้องเปิด Docker

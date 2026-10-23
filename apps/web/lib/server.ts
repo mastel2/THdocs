@@ -15,8 +15,8 @@ const serverKeys = env.THDOCS_SERVER_KEYS === "1";
 
 /** ollama/lmstudio เปิดเมื่อกำหนด URL ไว้ หรือรันแบบพัฒนาในเครื่อง */
 const LOCAL_URLS: Record<string, string | undefined> = {
-  ollama: env.THDOCS_OLLAMA_URL ?? (DEV ? "http://localhost:11434/v1" : undefined),
-  lmstudio: env.THDOCS_LMSTUDIO_URL ?? (DEV ? "http://localhost:1234/v1" : undefined),
+  ollama: env.THDOCS_OLLAMA_URL || (DEV ? "http://localhost:11434/v1" : undefined),
+  lmstudio: env.THDOCS_LMSTUDIO_URL || (DEV ? "http://localhost:1234/v1" : undefined),
 };
 
 const KEY_ENV: Record<string, string> = { anthropic: "ANTHROPIC_API_KEY", openai: "OPENAI_API_KEY", gemini: "GEMINI_API_KEY" };
@@ -131,7 +131,8 @@ export async function readJson(req: Request): Promise<unknown> {
 /** จำกัดคำขอที่เรียก AI ต่อ IP (หน่วยความจำในโปรเซส — ขึ้นระบบจริงหลายเครื่องให้ย้ายไป Redis) */
 const hits = new Map<string, { n: number; reset: number }>();
 const WINDOW_MS = 10 * 60_000;
-const MAX_HITS = Number(env.THDOCS_RATE_LIMIT ?? 60);
+// ค่าว่างหรือไม่ใช่ตัวเลข (เช่น "THDOCS_RATE_LIMIT=" ในไฟล์ .env) ใช้ค่าตั้งต้น — ไม่ใช่ 0 ซึ่งจะปฏิเสธทุกคำขอ
+const MAX_HITS = Number(env.THDOCS_RATE_LIMIT) > 0 ? Number(env.THDOCS_RATE_LIMIT) : 60;
 
 export function rateLimit(req: Request) {
   const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
