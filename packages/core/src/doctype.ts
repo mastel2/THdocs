@@ -116,6 +116,8 @@ export interface TemplatePack {
   /** ข้อมูลหน่วยงานสมมติ ใช้กับตัวอย่างเมื่อผู้ใช้ยังไม่ได้กรอกของตัวเอง */
   demoProfile?: OrgProfile;
   page?: PageStandard;
+  /** สิ่งที่ตัวตรวจ .docx คาดหวังจากไฟล์ของชุดนี้ */
+  docx?: { fonts: string[]; bodyPt?: number; emblem?: boolean };
 }
 
 const clampCm = (v: unknown, fallback: number) => (typeof v === "number" && Number.isFinite(v) && v >= 0.3 && v <= 8 ? v : fallback);

@@ -3,6 +3,6 @@
   "version": "0.0.1",
   "private": true,
   "type": "module",
-  "exports": { ".": "./src/index.ts" },
-  "dependencies": { "@thdocs/core": "0.0.1", "docx": "9.9.0" }
+  "exports": { ".": "./src/index.ts", "./inspect": "./src/inspect.ts" },
+  "dependencies": { "@thdocs/core": "0.0.1", "docx": "9.9.0", "jszip": "3.10.1" }
 }

@@ -28,6 +28,7 @@ export const isoPack: TemplatePack = {
   ],
   demoProfile: ISO_DEMO_PROFILE,
   page: PAGE,
+  docx: { fonts: ["TH SarabunPSK", "TH Sarabun New"] },
 };
 
 export { car, form, internalAudit, managementReview, policy, procedure, workInstruction };

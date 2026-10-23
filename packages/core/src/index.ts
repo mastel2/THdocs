@@ -4,3 +4,4 @@ export * from "./doctype";
 export * from "./checker";
 export * from "./pipeline";
 export * from "./privacy";
+export * from "./blank";

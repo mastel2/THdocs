@@ -37,6 +37,7 @@ export const thGovPack: TemplatePack = {
   ],
   demoProfile: DEMO_PROFILE,
   page: PAGE,
+  docx: { fonts: ["TH SarabunPSK", "TH Sarabun New"], bodyPt: 16, emblem: true },
 };
 
 // ทุกชนิดตรวจระยะขอบที่หน่วยงานปรับ เทียบมาตรฐานของชุดแม่แบบ
