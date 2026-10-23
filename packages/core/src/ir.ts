@@ -74,6 +74,8 @@ export interface Table {
   columnsCm: number[];
   rows: { cells: Cell[]; header?: boolean }[];
   spaceBeforePt?: number;
+  /** ห้ามแยกตารางข้ามหน้า (เช่น ตารางลงนาม — หัวตารางกับช่องลงนามต้องอยู่หน้าเดียวกัน) */
+  keepTogether?: boolean;
 }
 
 export type Block = Para | Emblem | Blank | Separator | Table;

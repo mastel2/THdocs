@@ -73,6 +73,28 @@ describe("ISO รายละเอียด", () => {
     expect(check(procedure, doc, c).map((x) => x.rule)).toContain("ISO_HISTORY");
   });
 
+  it("ตรวจติดตามภายใน: ระบบนับจำนวนตามประเภทเอง และข้อบกพร่องที่ไม่มีหลักฐานถูกจับ", async () => {
+    const { internalAudit } = await import("@thdocs/templates-iso");
+    const f = ISO_SAMPLES.iso_internal_audit!;
+    const c = contextFromDraft(f, profile);
+    const doc = assembleDraft(internalAudit, f, c);
+    expect(doc.counts).toEqual({ ข้อบกพร่องหลัก: 0, ข้อบกพร่องย่อย: 1, ข้อสังเกต: 1, จุดเด่น: 1 });
+    const w = f.wording as { findings: Record<string, string>[] };
+    const bad = { ...f, wording: { ...w, findings: [{ ...w.findings[0]!, evidence: "" }] } };
+    const cb = contextFromDraft(bad, profile);
+    expect(check(internalAudit, assembleDraft(internalAudit, bad, cb), cb).map((x) => x.rule)).toContain("IA_EVIDENCE");
+  });
+
+  it("CAR: ไม่มีสาเหตุที่แท้จริงถูกเตือน และ AI ระบุประเภทผลตรวจนอกรายการไม่ได้", async () => {
+    const { car, internalAudit } = await import("@thdocs/templates-iso");
+    const f = ISO_SAMPLES.iso_car!;
+    const bad = { ...f, wording: { ...(f.wording as object), rootCause: ["[ระบุ: สาเหตุที่แท้จริง]"] } };
+    const c = contextFromDraft(bad, profile);
+    expect(check(car, assembleDraft(car, bad, c), c).map((x) => x.rule)).toContain("CAR_ROOT_CAUSE");
+    const w = ISO_SAMPLES.iso_internal_audit!.wording as { findings: Record<string, string>[] };
+    expect(internalAudit.wordingSchema.safeParse({ ...w, findings: [{ ...w.findings[0]!, type: "ร้ายแรงมาก" }] }).success).toBe(false);
+  });
+
   it("พรีวิว HTML แสดงตารางหัวกระดาษและตาราง", () => {
     const file = ISO_SAMPLES.iso_form!;
     const def = isoPack.types.find((t) => t.id === file.type)!;

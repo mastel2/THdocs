@@ -112,7 +112,13 @@ export function controlHeader(c: Control, title: string): Block[] {
     columnsCm: [11, 5.5],
     rows: [
       { cells: [cell(c.org, { bold: true }), cell(`รหัสเอกสาร: ${c.docNo}`)] },
-      { cells: [cell([{ text: `${c.typeLabel}: `, bold: true }, { text: title, bold: true }]), cell(`ฉบับแก้ไขที่: ${c.revision}`)] },
+      {
+        cells: [
+          // ไม่เติมชนิดเอกสารซ้ำ ถ้าชื่อเรื่องขึ้นต้นด้วยชนิดเอกสารอยู่แล้ว
+          cell(title.startsWith(c.typeLabel) ? [{ text: title, bold: true }] : [{ text: `${c.typeLabel}: `, bold: true }, { text: title, bold: true }]),
+          cell(`ฉบับแก้ไขที่: ${c.revision}`),
+        ],
+      },
       {
         cells: [
           cell(`วันที่มีผลบังคับใช้: ${c.effectiveDate}`),
@@ -150,6 +156,31 @@ export function grid(columnsCm: number[], head: string[], rows: string[][], cent
   };
 }
 
+/** ตารางข้อมูลทั่วไปสองคอลัมน์ (หัวข้อสีพื้น | ค่า) เช่น หน่วยงานที่ตรวจ วันที่ ผู้ตรวจ */
+export function infoTable(rows: [string, string][]): Table {
+  return {
+    kind: "table",
+    columnsCm: [4.5, 12],
+    spaceBeforePt: 4,
+    rows: rows.map(([k, v]) => ({ cells: [cell(k, { bold: true, shade: SPEC.shade }), cell(v)] })),
+  };
+}
+
+/** ช่องลงนามตามบทบาท เช่น ผู้ตรวจ / ผู้รับการตรวจ */
+export function signTable(roles: [string, string][]): Table {
+  const w = SPEC.textWidthCm / roles.length;
+  return {
+    kind: "table",
+    columnsCm: roles.map(() => w),
+    spaceBeforePt: 8,
+    keepTogether: true,
+    rows: [
+      { cells: roles.map(([role]) => cell(role, { bold: true, align: "center", shade: SPEC.shade })) },
+      { cells: roles.map(([, name]) => cell(`\n\n(${name})\nวันที่ ......../......../........`, { align: "center", vAlign: "top" })) },
+    ],
+  };
+}
+
 /** ตารางลงนามจัดทำ/ทบทวน/อนุมัติ + ประวัติการแก้ไข — ปิดท้ายทุกเอกสาร */
 export function approvalAndHistory(c: Control, startNo: number): Block[] {
   const sign = (p: Person) => cell(`\n\n(${p.name})\n${p.position}\nวันที่ ......../......../........`, { align: "center", vAlign: "top" });
@@ -159,6 +190,7 @@ export function approvalAndHistory(c: Control, startNo: number): Block[] {
         kind: "table",
         columnsCm: [5.5, 5.5, 5.5],
         spaceBeforePt: 4,
+        keepTogether: true,
         rows: [
           { cells: ["จัดทำโดย", "ทบทวนโดย", "อนุมัติโดย"].map((h) => cell(h, { bold: true, align: "center", shade: SPEC.shade })) },
           { cells: [sign(c.prepared), sign(c.reviewed), sign(c.approved)] },

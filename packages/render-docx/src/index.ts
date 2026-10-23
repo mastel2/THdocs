@@ -143,7 +143,9 @@ class Renderer {
       width: { size: widths.reduce((a, b) => a + b, 0), type: WidthType.DXA },
       columnWidths: widths,
       borders: { top: line, bottom: line, left: line, right: line, insideHorizontal: line, insideVertical: line },
-      rows: t.rows.map((r) => {
+      rows: t.rows.map((r, ri) => {
+        // ห้ามแยกตาราง: ทุกย่อหน้าในแถวที่ไม่ใช่แถวสุดท้าย "อยู่กับย่อหน้าถัดไป" (วิธีมาตรฐานของ Word)
+        const keep = !!t.keepTogether && ri < t.rows.length - 1;
         let col = 0;
         return new TableRow({
           tableHeader: r.header ?? false,
@@ -158,7 +160,9 @@ class Renderer {
               ...(c.shade ? { shading: { fill: c.shade, type: ShadingType.CLEAR, color: "auto" } } : {}),
               verticalAlign: c.vAlign === "top" ? VerticalAlignTable.TOP : VerticalAlignTable.CENTER,
               margins: { top: 30, bottom: 30, left: 90, right: 90 },
-              children: c.paras.length ? c.paras.map((p) => this.paragraph(p)) : [new Paragraph({ children: [] })],
+              children: c.paras.length
+                ? c.paras.map((p) => this.paragraph(keep ? { ...p, keepWithNext: true } : p))
+                : [new Paragraph({ keepNext: keep, children: [] })],
             });
           }),
         });

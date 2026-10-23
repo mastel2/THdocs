@@ -52,7 +52,8 @@ export function genericRules(doc: unknown): Finding[] {
   for (const [where, text] of textFields(doc)) {
     if (debris(text)) {
       out.push({ level: "error", rule: "AI_DEBRIS", message: "พบข้อความแปลกปลอม AI อาจตอบผิดรูป — ตรวจและแก้ย่อหน้านี้", where });
-    } else if (text.length > 0 && text.replace(/[\s.,:;-]/g, "").length < 2) {
+    } else if (text.length > 0 && !/^\s*[-–—]\s*$/.test(text) && text.replace(/[\s.,:;-]/g, "").length < 2) {
+      // "-" เดี่ยว ๆ = ตั้งใจว่า "ไม่มี/ไม่เกี่ยว" (ใช้บ่อยในช่องตาราง) ไม่ใช่เศษจาก AI
       out.push({ level: "error", rule: "AI_EMPTY", message: "ย่อหน้าว่างหรือสั้นผิดปกติ — ลบหรือเขียนใหม่", where });
     }
     const phs = [...new Set(findPlaceholders(text))];

@@ -1,6 +1,9 @@
 import type { OrgProfile, TemplatePack } from "@thdocs/core";
+import { car } from "./car";
 import { PACK } from "./common";
 import { form } from "./form";
+import { internalAudit } from "./internal-audit";
+import { managementReview } from "./management-review";
 import { policy } from "./policy";
 import { procedure } from "./procedure";
 import { workInstruction } from "./work-instruction";
@@ -17,8 +20,13 @@ export const ISO_DEMO_PROFILE: OrgProfile = {
 export const isoPack: TemplatePack = {
   id: PACK,
   name: "เอกสารระบบคุณภาพ (ISO)",
-  types: [procedure, workInstruction, policy, form],
+  types: [
+    // เอกสารควบคุม (ใช้ปฏิบัติ)
+    procedure, workInstruction, policy, form,
+    // บันทึก (หลักฐานการปฏิบัติ)
+    internalAudit, car, managementReview,
+  ],
   demoProfile: ISO_DEMO_PROFILE,
 };
 
-export { form, policy, procedure, workInstruction };
+export { car, form, internalAudit, managementReview, policy, procedure, workInstruction };
