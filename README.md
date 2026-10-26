@@ -2,6 +2,11 @@
 
 ร่างเอกสารราชการไทยด้วย AI แล้วจัดรูปแบบ .docx ตามแบบที่กำหนด
 
+> **English:** THdocs drafts Thai government letters (11 official types under the Office of the Prime Minister's correspondence rules) and ISO quality-system documents with an LLM, then lays them out as .docx files and checks them against the rules. The LLM writes only the wording; layout, Thai numerals, dates and signature blocks are filled deterministically. Works with Claude/OpenAI/Gemini (bring your own key) or local models (Ollama / LM Studio), runs as a web app, PWA, CLI and Word add-in, and can also check .docx files you wrote yourself. Licensed AGPL-3.0-or-later (commercial licence available). Docs are in Thai.
+
+**สถานะ:** รุ่นเริ่มต้น (0.x) — ทดสอบอัตโนมัติ 247 ข้อ, ทดสอบเบราว์เซอร์ 114 ข้อ, ตรวจการจัดหน้าด้วย Word และ LibreOffice จริงครบ 19 ตัวอย่าง
+**ยังไม่ได้ทดสอบ:** คุณภาพการร่างกับ Claude/OpenAI/Gemini จริง, Word add-in บนเครื่องจริง, Firefox/Safari, การออกใบรับรอง HTTPS จริง — ดู [ข้อจำกัดที่ทราบ](#ข้อจำกัดที่ทราบ) · ผลลัพธ์เป็น**ฉบับร่าง** ผู้มีอำนาจต้องตรวจก่อนลงนาม
+
 **หลักการ:** AI เขียนเฉพาะถ้อยคำ ส่วนรูปแบบ (ขอบ ฟอนต์ ระยะ เลขไทย ตำแหน่งลงนาม) และข้อมูลที่ต้องถูกต้อง (เลขที่ วันที่ ผู้ลงนาม คำขึ้นต้น/ลงท้าย) ระบบเติมเองแบบตายตัว
 ข้อมูลใดไม่มี ระบบถามกลับก่อนร่าง หรือเว้นเป็นช่อง `[ระบุ: ...]` ที่ไฮไลต์ไว้ ไม่ให้ AI เดา
 
