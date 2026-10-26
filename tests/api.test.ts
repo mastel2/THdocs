@@ -334,3 +334,13 @@ describe("ครบวงจร: ดึงข้อมูล → ร่าง �
     expect(body).not.toMatch(/sk-test|node_modules|at \w+ \(/);
   });
 });
+
+describe("/api/config — ลิงก์ซอร์สโค้ด (AGPL ข้อ 13)", () => {
+  it("ส่ง sourceUrl เมื่อตั้งค่าเป็น https เท่านั้น", async () => {
+    const get = async (env: Record<string, string>) => ((await (await load({ NODE_ENV: "production", ...env })).config.GET().json()) as { sourceUrl: string | null }).sourceUrl;
+    expect(await get({})).toBeNull();
+    expect(await get({ THDOCS_SOURCE_URL: "https://example.com/thdocs" })).toBe("https://example.com/thdocs");
+    expect(await get({ THDOCS_SOURCE_URL: "http://example.com/x" })).toBeNull();
+    expect(await get({ THDOCS_SOURCE_URL: "javascript:alert(1)" })).toBeNull();
+  });
+});

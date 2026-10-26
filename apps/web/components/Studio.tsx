@@ -50,6 +50,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
   const install = useInstall();
   const [notice, setNotice] = useState<string | null>(null);
   const [providers, setProviders] = useState<ProviderInfo[]>([]);
+  const [sourceUrl, setSourceUrl] = useState<string | null>(null);
   const [profile, setProfile] = useState<OrgProfile>(EMPTY_PROFILE);
   const [emblem, setEmblem] = useState<string | null>(null);
   const [llm, setLlm] = useState<LLMChoice>({ provider: "anthropic" });
@@ -89,7 +90,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
       setFacts(d.file.facts);
       setStep("edit");
     }
-    fetch("/api/config").then((r) => r.json()).then((c: { providers: ProviderInfo[] }) => setProviders(c.providers)).catch(() => {});
+    fetch("/api/config").then((r) => r.json()).then((c: { providers: ProviderInfo[]; sourceUrl?: string | null }) => { setProviders(c.providers); setSourceUrl(c.sourceUrl ?? null); }).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -497,7 +498,7 @@ export function Studio({ variant = "web" }: { variant?: "web" | "addin" }) {
               )}
             </>
           )}
-          <p className="hint legal-links"><a href="/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> · <a href="/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a></p>
+          <p className="hint legal-links"><a href="/privacy" target="_blank" rel="noopener">นโยบายความเป็นส่วนตัว</a> · <a href="/terms" target="_blank" rel="noopener">ข้อกำหนดการใช้งาน</a>{sourceUrl && <> · <a href={sourceUrl} target="_blank" rel="noopener">ซอร์สโค้ด (AGPL-3.0)</a></>}</p>
         </section>
 
         <section className="main">

@@ -21,6 +21,7 @@ services:
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       THDOCS_PUBLIC_URL: ${THDOCS_PUBLIC_URL:-}   # โดเมนจริง (https://...) ใช้สร้าง manifest ของ Word add-in
       THDOCS_RATE_LIMIT: ${THDOCS_RATE_LIMIT:-}
+      THDOCS_SOURCE_URL: ${THDOCS_SOURCE_URL:-}   # ลิงก์ซอร์สโค้ดของเวอร์ชันที่รัน (AGPL ข้อ 13) — ตั้งก่อนเปิดสาธารณะ
     read_only: true
     tmpfs: ["/tmp"]
     cap_drop: [ALL]

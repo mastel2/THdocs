@@ -519,6 +519,13 @@ try {
     }
     return links === "/privacy,/terms" || `ลิงก์: ${links}`;
   });
+  await check("AGPL ข้อ 13: ถ้าตั้ง THDOCS_SOURCE_URL หน้าหลักมีลิงก์ซอร์สโค้ดตรงกัน (ไม่ตั้ง = ไม่มีลิงก์)", async () => {
+    const want = (await (await fetch(`${BASE}/api/config`)).json()).sourceUrl;
+    await go("/");
+    await sleep(500);
+    const got = await ev(`return [...document.querySelectorAll("a")].filter((a) => a.textContent.includes("ซอร์สโค้ด")).map((a) => a.href)[0] ?? null`);
+    return want === got || `config=${want} หน้า=${got}`;
+  });
   await check("API ทุกตัวตอบ no-store และ /api/config เปิดเฉพาะผู้ให้บริการที่อนุญาต", async () => {
     const r = await fetch(`${BASE}/api/config`);
     const j = await r.json();
