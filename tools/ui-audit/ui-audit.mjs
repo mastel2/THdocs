@@ -510,12 +510,12 @@ try {
       && !addin.get("content-security-policy") && !addin.get("x-frame-options") && addin.get("x-content-type-options") === "nosniff";
     return ok || "หัวไม่ครบ";
   });
-  await check("หน้านโยบายความเป็นส่วนตัว/ข้อกำหนดเปิดได้ มีป้ายฉบับร่าง และลิงก์จากหน้าหลัก", async () => {
+  await check("หน้านโยบายความเป็นส่วนตัว/ข้อกำหนดเปิดได้ ระบุผู้ให้บริการ ไม่เหลือช่อง [ระบุ] และมีลิงก์จากหน้าหลัก", async () => {
     await go("/");
     const links = await ev(`return [...document.querySelectorAll('a')].map((a) => a.getAttribute('href')).filter((h) => h === '/privacy' || h === '/terms').join()`);
     for (const p of ["/privacy", "/terms"]) {
       const t = await (await fetch(`${BASE}${p}`)).text();
-      if (!t.includes("ฉบับร่าง")) return `${p} ไม่มีป้ายฉบับร่าง`;
+      if (!t.includes("art@keep-dark.com") || t.includes("[ระบุ")) return `${p} ไม่มีผู้ให้บริการ หรือยังมีช่อง [ระบุ]`;
     }
     return links === "/privacy,/terms" || `ลิงก์: ${links}`;
   });

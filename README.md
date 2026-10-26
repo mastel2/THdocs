@@ -178,7 +178,7 @@ THDOCS_FONT_DIR=<โฟลเดอร์ที่มี TH Sarabun> npm run pre
 
 THdocs เผยแพร่ภายใต้ **GNU AGPL v3.0 หรือใหม่กว่า** (ไฟล์ [LICENSE](LICENSE)) และมี**ใบอนุญาตเชิงพาณิชย์**แยกต่างหากสำหรับผู้ที่ไม่ต้องการเงื่อนไข AGPL (ติดต่อเจ้าของโครงการ — ดู [NOTICE](NOTICE))
 ถ้านำไปให้บริการผ่านเครือข่าย ต้องให้ผู้ใช้เข้าถึงซอร์สโค้ดเวอร์ชันที่รันอยู่ได้ — ตั้ง `THDOCS_SOURCE_URL` เพื่อแสดงลิงก์ในหน้าเว็บ
-ร่วมพัฒนา: ดู [CONTRIBUTING.md](CONTRIBUTING.md) และ [docs/CLA.md](docs/CLA.md) (ฉบับร่าง) · ตัวเลือกใบอนุญาตที่พิจารณา: [docs/license-drafts](docs/license-drafts)
+ร่วมพัฒนา: ดู [CONTRIBUTING.md](CONTRIBUTING.md) (ตอนนี้ยังไม่รับโค้ดจากภายนอก) · ความปลอดภัย: [SECURITY.md](SECURITY.md) · เปิดบริการ: [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md) · ตัวเลือกใบอนุญาตที่พิจารณา: [docs/license-drafts](docs/license-drafts)
 
 ## ตรา ฟอนต์ และลิขสิทธิ์
 

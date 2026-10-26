@@ -209,6 +209,15 @@ describe("จำกัดอัตรา", () => {
     expect(codes.slice(3)).toEqual([429, 429]);
     expect((await ask("203.0.113.8")).status).not.toBe(429);
   });
+
+  it("ตารางจำกัดอัตราไม่โตไม่จบ: IP ปลอมจำนวนมากทำให้ตารางถูกล้าง (ผู้ใช้เดิมได้โควตาใหม่ ไม่ใช่เซิร์ฟเวอร์หน่วยความจำหมด)", async () => {
+    const r = await load({ NODE_ENV: "production", THDOCS_RATE_LIMIT: "2" });
+    const ask = (ip: string) => r.facts.POST(post({ type: "memo", request: "x", options: {}, llm: { provider: "custom" } }, ip));
+    for (let i = 0; i < 2; i++) await ask("198.51.100.1");
+    expect((await ask("198.51.100.1")).status).toBe(429);
+    for (let i = 0; i < 10_000; i++) await ask(`10.${i >> 8 & 255}.${i & 255}.9`);
+    expect((await ask("198.51.100.1")).status).not.toBe(429);
+  }, 60_000);
 });
 
 describe("ห้ามแคชผลลัพธ์ของ API", () => {

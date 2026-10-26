@@ -47,7 +47,7 @@ services:
 
   ollama:
     profiles: ["local-ai"]
-    image: ollama/ollama:latest   # ปักเป็น digest/เวอร์ชันก่อนใช้งานจริง
+    image: ollama/ollama@sha256:dea72d1e22270fe095b68fdf756d2b489d615643c5a2eaebbc5f569181e322d8   # ปักเป็น digest (ตรวจเมื่อ 2026-10-26) — อัปเดตเมื่อต้องการรุ่นใหม่
     volumes:
       - ollama:/root/.ollama
     restart: unless-stopped

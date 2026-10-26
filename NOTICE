@@ -1,5 +1,5 @@
 THdocs
-Copyright (c) 2026 จิตรกร ศิลปสมศักดิ์ (Jittakorn Sillapasomsak)
+Copyright (c) 2026 จิตรกร ศิลปสมศักดิ์ (Jittakorn Sillapasomsak) หรือที่รู้จักในนามแฝง KEEP_DARK
 
 ใบอนุญาต / License
   THdocs เผยแพร่ภายใต้ GNU Affero General Public License v3.0 หรือรุ่นที่ใหม่กว่า (ดูไฟล์ LICENSE)
@@ -8,7 +8,7 @@ Copyright (c) 2026 จิตรกร ศิลปสมศักดิ์ (Jitt
 
 ไลบรารีภายนอกที่ใช้ — เมื่อแจกจ่ายต้องแนบประกาศลิขสิทธิ์ของแต่ละไลบรารี ซึ่งอยู่ในไฟล์ LICENSE ของแต่ละแพ็กเกจใน node_modules
   - docx 9.9.0              MIT          https://github.com/dolanmiu/docx
-  - zod 4.6.5               MIT          https://github.com/colinhacks/zod
+  - zod 4.6.7               MIT          https://github.com/colinhacks/zod
   - @anthropic-ai/sdk       MIT          https://github.com/anthropics/anthropic-sdk-typescript
   - next, react, react-dom  MIT          https://github.com/vercel/next.js , https://github.com/facebook/react
   - jszip 3.10.1            MIT OR GPL-3.0-or-later — THdocs เลือกใช้ตามเงื่อนไข MIT

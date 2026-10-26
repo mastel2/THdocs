@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 จิตรกร ศิลปสมศักดิ์ (Jittakorn Sillapasomsak)
+Copyright (c) 2026 จิตรกร ศิลปสมศักดิ์ (Jittakorn Sillapasomsak), a.k.a. KEEP_DARK
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
