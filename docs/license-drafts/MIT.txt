@@ -1,6 +1,6 @@
 MIT License
 
-Copyright (c) 2026 [ระบุ: ชื่อเจ้าของลิขสิทธิ์ — บุคคลหรือนิติบุคคล]
+Copyright (c) 2026 จิตรกร ศิลปสมศักดิ์ (Jittakorn Sillapasomsak)
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
