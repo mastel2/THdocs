@@ -1,11 +1,21 @@
 THdocs
-Copyright (c) 2026 THdocs
+Copyright (c) 2026 จิตรกร ศิลปสมศักดิ์ (Jittakorn Sillapasomsak) หรือที่รู้จักในนามแฝง KEEP_DARK
 
-ซอฟต์แวร์นี้ใช้ไลบรารีภายนอกต่อไปนี้ (สัญญาอนุญาต MIT) — เมื่อแจกจ่ายต้องแนบประกาศลิขสิทธิ์ของแต่ละไลบรารี
-ซึ่งอยู่ในไฟล์ LICENSE ของแต่ละแพ็กเกจใน node_modules
+ใบอนุญาต / License
+  THdocs เผยแพร่ภายใต้ GNU Affero General Public License v3.0 หรือรุ่นที่ใหม่กว่า (ดูไฟล์ LICENSE)
+  และมีใบอนุญาตเชิงพาณิชย์แยกต่างหากสำหรับผู้ที่ไม่ต้องการเงื่อนไขของ AGPL — ติดต่อ art@keep-dark.com
+  (SPDX: AGPL-3.0-or-later OR LicenseRef-THdocs-Commercial)
 
-- docx 9.9.0            https://github.com/dolanmiu/docx
-- zod 4.6.5             https://github.com/colinhacks/zod
-- @anthropic-ai/sdk     https://github.com/anthropics/anthropic-sdk-typescript
+ไลบรารีภายนอกที่ใช้ — เมื่อแจกจ่ายต้องแนบประกาศลิขสิทธิ์ของแต่ละไลบรารี ซึ่งอยู่ในไฟล์ LICENSE ของแต่ละแพ็กเกจใน node_modules
+  - docx 9.9.0              MIT          https://github.com/dolanmiu/docx
+  - zod 4.6.7               MIT          https://github.com/colinhacks/zod
+  - @anthropic-ai/sdk       MIT          https://github.com/anthropics/anthropic-sdk-typescript
+  - next, react, react-dom  MIT          https://github.com/vercel/next.js , https://github.com/facebook/react
+  - jszip 3.10.1            MIT OR GPL-3.0-or-later — THdocs เลือกใช้ตามเงื่อนไข MIT
+  - typescript              Apache-2.0   (เครื่องมือพัฒนา)
+  - vitest, tsx             MIT          (เครื่องมือพัฒนา)
 
-ตราครุฑ ตราหน่วยงาน และฟอนต์ ไม่รวมอยู่ในซอฟต์แวร์นี้ ผู้ใช้ต้องจัดหาและใช้ตามกฎหมายและเงื่อนไขของเจ้าของ
+ตราครุฑ ตราหน่วยงาน และฟอนต์ ไม่รวมอยู่ในซอฟต์แวร์นี้และไม่อยู่ใต้ใบอนุญาตข้างต้น
+ผู้ใช้ต้องจัดหาและใช้ตามกฎหมายและเงื่อนไขของเจ้าของ
+
+ชื่อ "THdocs" ไม่ได้รับอนุญาตให้ใช้โดยใบอนุญาตซอฟต์แวร์ — ใช้ชื่อนี้กับผลิตภัณฑ์ดัดแปลงไม่ได้หากทำให้เข้าใจผิดว่าเป็นของเจ้าของเดิม

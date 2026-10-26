@@ -166,13 +166,19 @@ npm test                 # ไม่ต้องใช้ API key (ใช้ Moc
                          # รวมเทสต์ API ของเว็บ (tests/api.test.ts): สิทธิ์ใช้ key, SSRF, หนังสือลับ, ตรา, ขนาดคำขอ, จำกัดอัตรา, การปิดบังข้อมูล
 npm run typecheck
 
-# ไล่ใช้งานหน้าเว็บทุกปุ่ม/ทุกขั้นในเบราว์เซอร์จริง (Edge) — 91 ข้อ รวมตรวจตำแหน่งบนจอและมือถือ
+# ไล่ใช้งานหน้าเว็บทุกปุ่ม/ทุกขั้นในเบราว์เซอร์จริง (Edge) — 113 ข้อ รวมตรวจตำแหน่งบนจอและมือถือ
 cd apps/web && npx next build && npx next start -p 3100   # เทอร์มินัล 1
 node tools/ui-audit/fake-ollama.mjs 11500                  # เทอร์มินัล 2 (AI จำลองแบบ Ollama)
 node tools/ui-audit/ui-audit.mjs http://localhost:3100     # เทอร์มินัล 3
 npm run samples          # สร้าง .docx ตัวอย่างใน out/samples
 THDOCS_FONT_DIR=<โฟลเดอร์ที่มี TH Sarabun> npm run preview   # ต้องเปิด Docker
 ```
+
+## ใบอนุญาต
+
+THdocs เผยแพร่ภายใต้ **GNU AGPL v3.0 หรือใหม่กว่า** (ไฟล์ [LICENSE](LICENSE)) และมี**ใบอนุญาตเชิงพาณิชย์**แยกต่างหากสำหรับผู้ที่ไม่ต้องการเงื่อนไข AGPL (ติดต่อเจ้าของโครงการ — ดู [NOTICE](NOTICE))
+ถ้านำไปให้บริการผ่านเครือข่าย ต้องให้ผู้ใช้เข้าถึงซอร์สโค้ดเวอร์ชันที่รันอยู่ได้ — ตั้ง `THDOCS_SOURCE_URL` เพื่อแสดงลิงก์ในหน้าเว็บ
+ร่วมพัฒนา: ดู [CONTRIBUTING.md](CONTRIBUTING.md) (ตอนนี้ยังไม่รับโค้ดจากภายนอก) · ความปลอดภัย: [SECURITY.md](SECURITY.md) · เปิดบริการ: [docs/LAUNCH-CHECKLIST.md](docs/LAUNCH-CHECKLIST.md) · ตัวเลือกใบอนุญาตที่พิจารณา: [docs/license-drafts](docs/license-drafts)
 
 ## ตรา ฟอนต์ และลิขสิทธิ์
 

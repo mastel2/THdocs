@@ -510,14 +510,21 @@ try {
       && !addin.get("content-security-policy") && !addin.get("x-frame-options") && addin.get("x-content-type-options") === "nosniff";
     return ok || "หัวไม่ครบ";
   });
-  await check("หน้านโยบายความเป็นส่วนตัว/ข้อกำหนดเปิดได้ มีป้ายฉบับร่าง และลิงก์จากหน้าหลัก", async () => {
+  await check("หน้านโยบายความเป็นส่วนตัว/ข้อกำหนดเปิดได้ ระบุผู้ให้บริการ ไม่เหลือช่อง [ระบุ] และมีลิงก์จากหน้าหลัก", async () => {
     await go("/");
     const links = await ev(`return [...document.querySelectorAll('a')].map((a) => a.getAttribute('href')).filter((h) => h === '/privacy' || h === '/terms').join()`);
     for (const p of ["/privacy", "/terms"]) {
       const t = await (await fetch(`${BASE}${p}`)).text();
-      if (!t.includes("ฉบับร่าง")) return `${p} ไม่มีป้ายฉบับร่าง`;
+      if (!t.includes("art@keep-dark.com") || t.includes("[ระบุ")) return `${p} ไม่มีผู้ให้บริการ หรือยังมีช่อง [ระบุ]`;
     }
     return links === "/privacy,/terms" || `ลิงก์: ${links}`;
+  });
+  await check("AGPL ข้อ 13: ถ้าตั้ง THDOCS_SOURCE_URL หน้าหลักมีลิงก์ซอร์สโค้ดตรงกัน (ไม่ตั้ง = ไม่มีลิงก์)", async () => {
+    const want = (await (await fetch(`${BASE}/api/config`)).json()).sourceUrl;
+    await go("/");
+    await sleep(500);
+    const got = await ev(`return [...document.querySelectorAll("a")].filter((a) => a.textContent.includes("ซอร์สโค้ด")).map((a) => a.href)[0] ?? null`);
+    return want === got || `config=${want} หน้า=${got}`;
   });
   await check("API ทุกตัวตอบ no-store และ /api/config เปิดเฉพาะผู้ให้บริการที่อนุญาต", async () => {
     const r = await fetch(`${BASE}/api/config`);

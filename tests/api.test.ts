@@ -209,6 +209,15 @@ describe("จำกัดอัตรา", () => {
     expect(codes.slice(3)).toEqual([429, 429]);
     expect((await ask("203.0.113.8")).status).not.toBe(429);
   });
+
+  it("ตารางจำกัดอัตราไม่โตไม่จบ: IP ปลอมจำนวนมากทำให้ตารางถูกล้าง (ผู้ใช้เดิมได้โควตาใหม่ ไม่ใช่เซิร์ฟเวอร์หน่วยความจำหมด)", async () => {
+    const r = await load({ NODE_ENV: "production", THDOCS_RATE_LIMIT: "2" });
+    const ask = (ip: string) => r.facts.POST(post({ type: "memo", request: "x", options: {}, llm: { provider: "custom" } }, ip));
+    for (let i = 0; i < 2; i++) await ask("198.51.100.1");
+    expect((await ask("198.51.100.1")).status).toBe(429);
+    for (let i = 0; i < 10_000; i++) await ask(`10.${i >> 8 & 255}.${i & 255}.9`);
+    expect((await ask("198.51.100.1")).status).not.toBe(429);
+  }, 60_000);
 });
 
 describe("ห้ามแคชผลลัพธ์ของ API", () => {
@@ -332,5 +341,15 @@ describe("ครบวงจร: ดึงข้อมูล → ร่าง �
     expect([502, 500]).toContain(res.status);
     const body = JSON.stringify(await res.json());
     expect(body).not.toMatch(/sk-test|node_modules|at \w+ \(/);
+  });
+});
+
+describe("/api/config — ลิงก์ซอร์สโค้ด (AGPL ข้อ 13)", () => {
+  it("ส่ง sourceUrl เมื่อตั้งค่าเป็น https เท่านั้น", async () => {
+    const get = async (env: Record<string, string>) => ((await (await load({ NODE_ENV: "production", ...env })).config.GET().json()) as { sourceUrl: string | null }).sourceUrl;
+    expect(await get({})).toBeNull();
+    expect(await get({ THDOCS_SOURCE_URL: "https://example.com/thdocs" })).toBe("https://example.com/thdocs");
+    expect(await get({ THDOCS_SOURCE_URL: "http://example.com/x" })).toBeNull();
+    expect(await get({ THDOCS_SOURCE_URL: "javascript:alert(1)" })).toBeNull();
   });
 });

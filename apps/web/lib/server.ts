@@ -134,9 +134,16 @@ const WINDOW_MS = 10 * 60_000;
 // ค่าว่างหรือไม่ใช่ตัวเลข (เช่น "THDOCS_RATE_LIMIT=" ในไฟล์ .env) ใช้ค่าตั้งต้น — ไม่ใช่ 0 ซึ่งจะปฏิเสธทุกคำขอ
 const MAX_HITS = Number(env.THDOCS_RATE_LIMIT) > 0 ? Number(env.THDOCS_RATE_LIMIT) : 60;
 
+/** ตารางไม่โตไม่จบ: เกินเพดานให้ล้างรายการที่หมดอายุก่อน ถ้ายังเต็มให้ล้างทั้งหมด (ยอมให้ผู้ใช้ได้โควตาใหม่ดีกว่าให้หน่วยความจำหมด) */
+const MAX_TRACKED = 10_000;
+
 export function rateLimit(req: Request) {
-  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() || "local";
+  const ip = req.headers.get("x-forwarded-for")?.split(",")[0]?.trim().slice(0, 64) || "local";
   const now = Date.now();
+  if (hits.size >= MAX_TRACKED) {
+    for (const [k, v] of hits) if (v.reset < now) hits.delete(k);
+    if (hits.size >= MAX_TRACKED) hits.clear();
+  }
   const h = hits.get(ip);
   if (!h || h.reset < now) hits.set(ip, { n: 1, reset: now + WINDOW_MS });
   else if (++h.n > MAX_HITS) throw new HttpError(429, "เรียกใช้บ่อยเกินไป ลองใหม่ภายหลัง");
